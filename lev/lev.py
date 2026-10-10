@@ -83,7 +83,11 @@ class Lev(ABC):
 
     @abstractmethod
     def choice(self, instructions: str, criteria: Dict[str, str]) -> ChoiceResponse:
-        """Select an option using this instance's state and model."""
+        """Select an option using this instance's state and model.
+
+        A successful result must have ``result.choice in criteria``. If no valid
+        option can be returned, report failure rather than an out-of-set choice.
+        """
         raise NotImplementedError
 
     @abstractmethod
