@@ -1,12 +1,12 @@
-"""Streaming submission contracts for Lev eDSL programs."""
+"""Batch submission and result-stream contracts for Lev eDSL programs."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Generic, Literal, TypeAlias, TypeVar
+from typing import Generic, List, Literal, TypeAlias, TypeVar
 
 from lev.lev import Lev
 
@@ -83,10 +83,10 @@ class ResultStream(Iterator[Result[R]], ABC):
             raise
 
     def close(self) -> None:
-        """Stop consumption and release resources; repeated calls are harmless.
+        """Stop receiving results and release resources; repeated calls are harmless.
 
-        Closing discards undelivered results. No further inputs may be read or
-        work submitted. The transport should request cancellation of pending
+        Closing discards undelivered results. No further work may be submitted.
+        The transport should request cancellation of pending
         work, without promising that already-running remote work can be stopped.
         The stream stays closed even if transport cleanup raises an exception.
         """
@@ -121,14 +121,14 @@ class ResultStream(Iterator[Result[R]], ABC):
     def _close(self) -> None:
         """Release local resources and request cancellation, at most once.
 
-        This hook must not consume more inputs or wait for unfinished work to
+        This hook must not submit new work or wait for unfinished work to
         complete. It is also called after normal exhaustion or iteration errors.
         """
         raise NotImplementedError
 
 
 class LevClient(ABC):
-    """Client configuration and streaming submission contract for a Lev service.
+    """Client configuration and batch submission contract for a Lev service.
 
     ``base_url`` identifies the service's API root; ``submit_path`` is appended
     to that root, preserving any base path. ``api_key=None`` means no
@@ -157,12 +157,11 @@ class LevClient(ABC):
     def submit(
         self,
         program: Callable[[Lev], R],
-        inputs: Iterable[State],
+        inputs: List[State],
         *,
         ordered: bool = False,
-        max_pending: int = 64,
     ) -> ResultStream[R]:
-        """Apply a single-input eDSL function to a stream of input states.
+        """Apply a single-input eDSL function to a list of input states.
 
         For each input, supply ``program`` with an independent ``Lev`` bound to
         that state and the execution configuration. All Lev operations in the
@@ -170,30 +169,25 @@ class LevClient(ABC):
         additional Lev instances or switch to derived contexts. Model execution
         and constraint handling belong to the eDSL runtime.
 
-        Inputs may be strings, JSON arrays, or JSON objects. Accept any iterable
-        of those states, but reject a bare string, bytes, or dict as the outer
-        ``inputs`` container. Consume inputs once and incrementally. Input and
-        output JSON values must use string object keys and finite numbers.
-        The caller owns the input iterable: closing the result stream does not
-        call ``close()`` on that iterable or its iterator.
+        ``inputs`` must be a list of strings, JSON arrays, or JSON objects.
+        An empty list produces an empty result stream. Input and output JSON
+        values must use string object keys and finite numbers.
 
         Preserve each program return value in ``Result.value``, without encoding
-        it as a JSON string or flattening lists. Assign zero-based indices in
-        input-consumption order; retries retain the same index. Normal completion
+        it as a JSON string or flattening lists. Result indices are the zero-based
+        positions in ``inputs``; retries retain the same index. Normal completion
         produces one success or error result for every input, without duplicate
         delivery within the stream. Early closure or a submission-level failure
         may leave inputs without delivered results.
 
         By default deliver results as they become available. ``ordered=True``
-        delivers them in input order. ``max_pending`` must be a positive integer
-        and bounds all consumed inputs whose results have not yet been delivered,
-        including queued, running, and completed-but-buffered items. A full
-        buffer must pause input consumption, including in ordered mode.
+        delivers them in input order. Scheduling and concurrency are left to
+        concrete implementations.
 
         Per-input execution failures are error results, so other inputs may
         continue. Invalid submission configuration, program errors preventing
         submission, authentication failures, and unrecoverable transport failures
-        raise exceptions. Exceptions raised by the input iterator also propagate.
+        raise exceptions.
         Once a stream is returned, fatal iteration errors close it automatically.
 
         Use the returned stream as a context manager to release resources even
