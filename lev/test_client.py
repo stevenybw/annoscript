@@ -3,7 +3,10 @@
 from collections.abc import Iterable
 import unittest
 
-from lev.client import Result, ResultError, ResultStream
+from lev.client import (
+    InputValidationError, LevClient, Result, ResultError, ResultStream,
+    precondition, require,
+)
 
 
 class ScriptedStream(ResultStream[str]):
@@ -154,6 +157,109 @@ class ResultTests(unittest.TestCase):
             with self.subTest(options=options):
                 with self.assertRaises(ValueError):
                     Result(**options)
+
+
+class PreconditionTests(unittest.TestCase):
+    def test_require_reports_invalid_input(self):
+        self.assertIsNone(require(True, message="unused"))
+        with self.assertRaisesRegex(InputValidationError, "text is required"):
+            require(False, message="text is required")
+
+    def test_registration_preserves_function_and_does_not_run_checks(self):
+        checked = []
+
+        def check(state):
+            checked.append(state)
+
+        def program(lev):
+            return "done"
+
+        original_attributes = vars(program).copy()
+        original_code = program.__code__
+        decorated = precondition(check)(program)
+        self.assertIs(decorated, program)
+        self.assertIs(decorated.__code__, original_code)
+        self.assertEqual(vars(decorated), original_attributes)
+        self.assertEqual(decorated(None), "done")
+        self.assertEqual(checked, [])
+        self.assertEqual(LevClient._validate_inputs(decorated, ["record"]), {})
+        self.assertEqual(checked, ["record"])
+
+    def test_local_batch_check_preserves_indices_and_never_runs_program(self):
+        checked = []
+
+        def check(state):
+            checked.append(state)
+            require(isinstance(state, str), message="expected text")
+
+        @precondition(check)
+        def program(lev):
+            self.fail("Preconditions must not execute the program")
+
+        inputs = [{}, "valid", []]
+        errors = LevClient._validate_inputs(program, inputs)
+        self.assertEqual(checked, inputs)
+        self.assertEqual(errors, {
+            0: ResultError(code="invalid_input", message="expected text"),
+            2: ResultError(code="invalid_input", message="expected text"),
+        })
+
+    def test_stacked_checks_run_in_source_order_and_stop_on_invalid_input(self):
+        checked = []
+
+        def check_object(state):
+            checked.append("object")
+            require(isinstance(state, dict), message="expected object")
+
+        def check_text(state):
+            checked.append("text")
+            require(isinstance(state.get("text"), str), message="expected text")
+
+        @precondition(check_object)
+        @precondition(check_text)
+        def program(lev):
+            return "unused"
+
+        errors = LevClient._validate_inputs(program, ["wrong", {}, {"text": "valid"}])
+        self.assertEqual(set(errors), {0, 1})
+        self.assertEqual(checked, ["object", "object", "text", "object", "text"])
+
+    def test_unexpected_checker_errors_abort_validation(self):
+        for error in (ValueError("checker bug"), KeyError("missing")):
+            with self.subTest(error=type(error).__name__):
+                checked = []
+
+                def check(state):
+                    checked.append(state)
+                    raise error
+
+                @precondition(check)
+                def program(lev):
+                    return "unused"
+
+                with self.assertRaises(type(error)) as caught:
+                    LevClient._validate_inputs(program, ["first", "second"])
+                self.assertIs(caught.exception, error)
+                self.assertEqual(checked, ["first"])
+
+    def test_boolean_checker_return_is_a_defect_not_a_validation_result(self):
+        @precondition(lambda state: False)
+        def program(lev):
+            return "unused"
+
+        with self.assertRaisesRegex(TypeError, "return None"):
+            LevClient._validate_inputs(program, ["record"])
+
+    def test_empty_batch_and_program_without_preconditions(self):
+        def check(state):
+            self.fail("An empty batch must not run checks")
+
+        def program(lev):
+            self.fail("Validation must not run the program")
+
+        self.assertEqual(LevClient._validate_inputs(program, ["record"]), {})
+        precondition(check)(program)
+        self.assertEqual(LevClient._validate_inputs(program, []), {})
 
 
 if __name__ == "__main__":

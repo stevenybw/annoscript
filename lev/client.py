@@ -5,8 +5,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from types import TracebackType
+from types import FunctionType, TracebackType
 from typing import Generic, List, Literal, TypeAlias, TypeVar
+from weakref import WeakKeyDictionary
 
 from lev.lev import Lev
 
@@ -16,11 +17,61 @@ JSONValue: TypeAlias = (
 )
 State: TypeAlias = str | list[JSONValue] | dict[str, JSONValue]
 R = TypeVar("R", bound=JSONValue)
+InputCheck: TypeAlias = Callable[[State], None]
+
+# Keep local checks outside the program function's attributes and execution body.
+_PRECONDITIONS: WeakKeyDictionary[
+    Callable[[Lev], JSONValue], tuple[InputCheck, ...]
+] = WeakKeyDictionary()
+
+
+class InputValidationError(ValueError):
+    """An input failed a client-local precondition, before remote submission."""
+
+
+def require(condition: bool, *, message: str) -> None:
+    """Check an input condition locally; raise InputValidationError on failure.
+
+    This ordinary Python function remains active under optimization. It never
+    invokes inference, repairs inputs, or propagates constraints to the eDSL.
+    """
+    if not condition:
+        raise InputValidationError(message)
+
+
+def precondition(
+    check: InputCheck,
+) -> Callable[[Callable[[Lev], R]], Callable[[Lev], R]]:
+    """Register a client-local input check and return the original program.
+
+    Checks are synchronous, deterministic, read-only Python functions. Return
+    None for success and raise InputValidationError for an invalid input. Other
+    exceptions indicate a checker defect and abort submission. Checks must not
+    invoke models or make network requests.
+
+    Registration does not run checks or wrap the program. Direct program calls
+    do not run checks; LevClient implementations run them before any remote
+    submission. Stacked decorators are checked in source order (top to bottom),
+    stopping at the first failed check for each input.
+
+    The registry is local only. Remote program packaging must exclude these
+    decorator declarations, check functions, and their validation dependencies.
+    """
+    if not callable(check):
+        raise TypeError("precondition requires a callable input check")
+
+    def register(program: Callable[[Lev], R]) -> Callable[[Lev], R]:
+        if not isinstance(program, FunctionType):
+            raise TypeError("precondition must decorate a Python function")
+        _PRECONDITIONS[program] = (check,) + _PRECONDITIONS.get(program, ())
+        return program
+
+    return register
 
 
 @dataclass(frozen=True)
 class ResultError:
-    """A per-input execution failure, including an unsatisfied constraint."""
+    """A per-input failure, including local validation or unsatisfied constraints."""
 
     code: str
     message: str
@@ -135,9 +186,10 @@ class LevClient(ABC):
     authentication header; otherwise use Bearer authentication. ``timeout`` is
     the HTTP operation timeout in seconds and must be finite and positive.
 
-    Construction only stores configuration. Concrete implementations handle
-    validation, transport, and scheduling. Function packaging and dependency
-    submission are left to future implementations.
+    Construction only stores configuration. Concrete implementations use
+    ``_validate_inputs`` for local preconditions and handle JSON validation,
+    transport, and scheduling. Function packaging and dependency submission are
+    left to future implementations; local preconditions must always be excluded.
     """
 
     def __init__(
@@ -152,6 +204,33 @@ class LevClient(ABC):
         self.api_key = api_key
         self.timeout = timeout
         self.submit_path = submit_path
+
+    @staticmethod
+    def _validate_inputs(
+        program: Callable[[Lev], R], inputs: List[State]
+    ) -> dict[int, ResultError]:
+        """Run the whole batch's preconditions locally, without running program.
+
+        Call before any remote submission. Return invalid-input errors keyed by
+        original list index; the remaining indices passed all registered checks.
+        Only InputValidationError becomes an item error. Unexpected exceptions
+        and non-None check returns abort validation and must prevent submission.
+
+        This helper validates the outer list and program-specific preconditions.
+        Concrete clients also validate the generic JSON input contract.
+        """
+        if not isinstance(inputs, list):
+            raise TypeError("inputs must be a list")
+        checks = _PRECONDITIONS.get(program, ())
+        errors = {}
+        for index, state in enumerate(inputs):
+            try:
+                for check in checks:
+                    if check(state) is not None:
+                        raise TypeError("precondition checks must return None on success")
+            except InputValidationError as error:
+                errors[index] = ResultError(code="invalid_input", message=str(error))
+        return errors
 
     @abstractmethod
     def submit(
@@ -172,6 +251,15 @@ class LevClient(ABC):
         ``inputs`` must be a list of strings, JSON arrays, or JSON objects.
         An empty list produces an empty result stream. Input and output JSON
         values must use string object keys and finite numbers.
+
+        Run all registered ``precondition`` checks locally with
+        ``_validate_inputs`` before any remote submission. Return failed inputs
+        as error results with code ``invalid_input`` and their original indices;
+        do not create a Lev context or remote task for those inputs. Submit only
+        inputs that passed, and merge local errors into the same ResultStream,
+        respecting ``ordered``. An unexpected checker exception aborts the whole
+        submission before any remote work. Local check functions, rules, and
+        decorator declarations must not be included in the remote program.
 
         Preserve each program return value in ``Result.value``, without encoding
         it as a JSON string or flattening lists. Result indices are the zero-based
