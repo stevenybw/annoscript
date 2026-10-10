@@ -1,5 +1,4 @@
-# Lev: 一个带生成语义的 Jev
+# Lev: 一个融合 Decision 与 Generation 的数据标注器
 
-## Motivation
-
-Jev 的生成半结构化数据的思路是好的，并且覆盖了分类场景。但是存在
+- [motivation.md](motivation.md) 描述了为什么我们需要 Lev
+- [design_api.md](design_api.md) 描述了 Lev 的接口设计
