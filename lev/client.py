@@ -23,6 +23,8 @@ InputCheck: TypeAlias = Callable[[State], None]
 _PRECONDITIONS: WeakKeyDictionary[
     Callable[[Lev], JSONValue], tuple[InputCheck, ...]
 ] = WeakKeyDictionary()
+# Only this registry's text values are exported as remote program configuration.
+_SYSTEM_PROMPTS: WeakKeyDictionary[Callable[[Lev], JSONValue], str] = WeakKeyDictionary()
 
 
 class InputValidationError(ValueError):
@@ -64,6 +66,37 @@ def precondition(
         if not isinstance(program, FunctionType):
             raise TypeError("precondition must decorate a Python function")
         _PRECONDITIONS[program] = (check,) + _PRECONDITIONS.get(program, ())
+        return program
+
+    return register
+
+
+def system_prompt(
+    prompt: str,
+) -> Callable[[Callable[[Lev], R]], Callable[[Lev], R]]:
+    """Declare shared model instructions and return the original program.
+
+    The client exports this text as program configuration. The runtime binds it
+    to every record's injected Lev and applies it to every model operation,
+    including calls inside helper functions. Per-call instructions describe the
+    specific task; API guarantees and hard constraints remain independently
+    enforced. Mapping the shared instructions to a model is the runtime's job.
+
+    Registration neither wraps nor executes the program and creates no context.
+    Direct Python calls do not inject the prompt. Each program may declare one
+    system prompt; any repeated declaration raises ValueError. Empty strings
+    are allowed and preserved. Prompt text is sent as configuration, without
+    executing the decorator remotely or exporting local precondition checks.
+    """
+    if not isinstance(prompt, str):
+        raise TypeError("system_prompt requires a string")
+
+    def register(program: Callable[[Lev], R]) -> Callable[[Lev], R]:
+        if not isinstance(program, FunctionType):
+            raise TypeError("system_prompt must decorate a Python function")
+        if program in _SYSTEM_PROMPTS:
+            raise ValueError("a program may declare only one system_prompt")
+        _SYSTEM_PROMPTS[program] = prompt
         return program
 
     return register
@@ -187,9 +220,10 @@ class LevClient(ABC):
     the HTTP operation timeout in seconds and must be finite and positive.
 
     Construction only stores configuration. Concrete implementations use
-    ``_validate_inputs`` for local preconditions and handle JSON validation,
-    transport, and scheduling. Function packaging and dependency submission are
-    left to future implementations; local preconditions must always be excluded.
+    ``_validate_inputs`` for local preconditions and ``_get_program_config`` for
+    remote execution configuration. They handle JSON validation, transport, and
+    scheduling. Function packaging and dependency submission are left to future
+    implementations; local preconditions must always be excluded.
     """
 
     def __init__(
@@ -204,6 +238,17 @@ class LevClient(ABC):
         self.api_key = api_key
         self.timeout = timeout
         self.submit_path = submit_path
+
+    @staticmethod
+    def _get_program_config(program: Callable[[Lev], R]) -> dict[str, JSONValue]:
+        """Return fresh, JSON-compatible execution settings for remote submission.
+
+        Export system-prompt text only, never local check functions or rules.
+        Programs without a declaration have no system_prompt configuration key.
+        Reading configuration does not execute the program or its preconditions.
+        """
+        prompt = _SYSTEM_PROMPTS.get(program)
+        return {} if prompt is None else {"system_prompt": prompt}
 
     @staticmethod
     def _validate_inputs(
@@ -247,6 +292,12 @@ class LevClient(ABC):
         program must target this supplied instance; programs must not construct
         additional Lev instances or switch to derived contexts. Model execution
         and constraint handling belong to the eDSL runtime.
+
+        Include ``_get_program_config(program)`` as remote program configuration.
+        The runtime supplies its ``system_prompt`` to each injected Lev and uses
+        it for all model calls, including those in helpers. Keep it separate from
+        input states and per-call instructions. The prompt text is transmitted;
+        the decorator declaration itself is not part of remote executable code.
 
         ``inputs`` must be a list of strings, JSON arrays, or JSON objects.
         An empty list produces an empty result stream. Input and output JSON

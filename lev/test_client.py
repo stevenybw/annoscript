@@ -1,11 +1,12 @@
 """Behavioral checks for result-stream ownership and terminal outcomes."""
 
 from collections.abc import Iterable
+import json
 import unittest
 
 from lev.client import (
     InputValidationError, LevClient, Result, ResultError, ResultStream,
-    precondition, require,
+    precondition, require, system_prompt,
 )
 
 
@@ -157,6 +158,88 @@ class ResultTests(unittest.TestCase):
             with self.subTest(options=options):
                 with self.assertRaises(ValueError):
                     Result(**options)
+
+
+class SystemPromptTests(unittest.TestCase):
+    def test_registration_preserves_function_and_prompt_text(self):
+        calls = []
+
+        def program(lev):
+            calls.append(lev)
+            return "done"
+
+        original_code = program.__code__
+        original_attributes = vars(program).copy()
+        prompt = '  公共规则\n保留 "原文"。  '
+        decorated = system_prompt(prompt)(program)
+        self.assertIs(decorated, program)
+        self.assertIs(decorated.__code__, original_code)
+        self.assertEqual(vars(decorated), original_attributes)
+        self.assertEqual(LevClient._get_program_config(decorated), {"system_prompt": prompt})
+        self.assertEqual(calls, [])
+        self.assertEqual(decorated(None), "done")
+        self.assertEqual(calls, [None])
+
+    def test_duplicate_declarations_fail_without_replacing_original(self):
+        for prompt in ("rules", ""):
+            with self.subTest(prompt=prompt):
+                @system_prompt(prompt)
+                def program(lev):
+                    return "unused"
+
+                for repeated in (prompt, "replacement"):
+                    with self.assertRaisesRegex(ValueError, "only one"):
+                        system_prompt(repeated)(program)
+                self.assertEqual(LevClient._get_program_config(program), {"system_prompt": prompt})
+
+    def test_both_decorator_orders_export_prompt_and_keep_checks_local(self):
+        for prompt_outermost in (True, False):
+            with self.subTest(prompt_outermost=prompt_outermost):
+                checked = []
+
+                def check(state):
+                    checked.append(state)
+                    require(isinstance(state, str), message="expected text")
+
+                def program(lev):
+                    self.fail("Metadata and validation must not execute the program")
+
+                if prompt_outermost:
+                    decorated = system_prompt("rules")(precondition(check)(program))
+                else:
+                    decorated = precondition(check)(system_prompt("rules")(program))
+                config = LevClient._get_program_config(decorated)
+                self.assertEqual(json.loads(json.dumps(config)), {"system_prompt": "rules"})
+                self.assertEqual(checked, [])
+                self.assertIs(decorated, program)
+                errors = LevClient._validate_inputs(decorated, ["valid", {}])
+                self.assertEqual(checked, ["valid", {}])
+                self.assertEqual(set(errors), {1})
+                self.assertEqual(errors[1].code, "invalid_input")
+
+    def test_configuration_is_isolated_between_programs_and_reads(self):
+        @system_prompt("first rules")
+        def first(lev):
+            return "unused"
+
+        @system_prompt("second rules")
+        def second(lev):
+            return "unused"
+
+        def undecorated(lev):
+            return "unused"
+
+        config = LevClient._get_program_config(first)
+        config["system_prompt"] = "changed"
+        self.assertEqual(LevClient._get_program_config(first), {"system_prompt": "first rules"})
+        self.assertEqual(LevClient._get_program_config(second), {"system_prompt": "second rules"})
+        self.assertEqual(LevClient._get_program_config(undecorated), {})
+
+    def test_prompt_must_be_text(self):
+        for prompt in (None, 1, [], {}):
+            with self.subTest(prompt=prompt):
+                with self.assertRaisesRegex(TypeError, "requires a string"):
+                    system_prompt(prompt)
 
 
 class PreconditionTests(unittest.TestCase):

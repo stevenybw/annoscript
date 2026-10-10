@@ -65,11 +65,24 @@ class GenerateListResponse:
 
 
 class Lev(ABC):
-    """Decision, extraction, and generation operations sharing a state and model."""
+    """Decision, extraction, and generation operations sharing execution context.
 
-    def __init__(self, state: str | Dict[str, Any] | List[Any], model: str):
+    The runtime supplies the program's system_prompt when constructing the
+    per-record instance. Implementations must apply it to every model operation,
+    including operations called from helpers, alongside the per-call task
+    instructions. It does not override API guarantees or hard constraints.
+    """
+
+    def __init__(
+        self,
+        state: str | Dict[str, Any] | List[Any],
+        model: str,
+        *,
+        system_prompt: str | None = None,
+    ):
         self.state = state
         self.model = model
+        self.system_prompt = system_prompt
 
     @abstractmethod
     def noul(
