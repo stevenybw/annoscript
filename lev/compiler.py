@@ -684,11 +684,16 @@ class _Compiler:
         return program
 
 
-def compile_program(program: Callable[[Lev], JSONValue]) -> ir.Program:
+def compile_program(program: Callable[[Lev], JSONValue], *, optimize: bool = True) -> ir.Program:
     """Compile one function and snapshot its reachable constants/configuration.
 
     Importing the function is the caller's responsibility. Compilation performs
     no input validation, model calls, user function execution or remote work.
     Unsupported programs raise CompileError instead of falling back to Python.
+    Set optimize=False to inspect the original lowering before optimization.
     """
-    return _Compiler(program).compile()
+    result = _Compiler(program).compile()
+    if optimize:
+        from lev.passes import optimize_program
+        result = optimize_program(result)
+    return result
