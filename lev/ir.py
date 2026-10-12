@@ -26,10 +26,21 @@ preserves dictionary entry order, and contains no Python objects or source code.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import MISSING, dataclass, fields, is_dataclass
+from functools import lru_cache
 import json
 import math
-from typing import ClassVar, Literal as TypingLiteral
+from types import UnionType
+from typing import ClassVar, Literal as TypingLiteral, Union, get_args, get_origin, get_type_hints
+
+
+class IRDecodeError(ValueError):
+    """Malformed or unsupported serialized IR, with a path into the document."""
+
+    def __init__(self, message: str, path: str = "$"):
+        self.message = message
+        self.path = path
+        super().__init__(f"{path}: {message}")
 
 
 def _encode(value):
@@ -284,3 +295,162 @@ class Program:
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, allow_nan=False, indent=indent)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Program:
+        """Restore version-1 IR from JSON data, without executing any code.
+
+        Checks node categories, field types, operators, source ranges and unique
+        statement IDs. This is structural validation, not type/ownership analysis
+        or proof that the program's constraints can be satisfied. Unknown fields
+        and versions are rejected. Collections are detached immutable tuples.
+        """
+        if type(data) is not dict:
+            raise IRDecodeError("expected a program object")
+        if data.get("format") != "lev-ir":
+            raise IRDecodeError("expected format 'lev-ir'", "$.format")
+        if type(data.get("version")) is not int or data["version"] != 1:
+            raise IRDecodeError("unsupported IR version; expected 1", "$.version")
+        try:
+            return _Decoder().decode(data, Program, "$")
+        except RecursionError as exc:
+            raise IRDecodeError("IR nesting is too deep") from exc
+
+    @classmethod
+    def from_json(cls, text: str) -> Program:
+        """Read JSON text; reject duplicate object keys and non-finite numbers."""
+        def object_pairs(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise IRDecodeError(f"duplicate JSON object key {key!r}")
+                result[key] = value
+            return result
+
+        def constant(value):
+            raise IRDecodeError(f"non-finite JSON number {value!r}")
+
+        try:
+            data = json.loads(text, object_pairs_hook=object_pairs, parse_constant=constant)
+        except json.JSONDecodeError as exc:
+            raise IRDecodeError(f"invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}") from exc
+        except (RecursionError, UnicodeError) as exc:
+            raise IRDecodeError(f"invalid JSON: {exc}") from exc
+        return cls.from_dict(data)
+
+
+# A closed registry: a JSON tag can never import a class or resolve Python code.
+_NODE_TYPES = {
+    node.kind: node for node in (
+        Literal, Var, State, GetItem, Field, ListExpr, TupleExpr, DictExpr,
+        Unary, Binary, Compare, BoolOp, Intrinsic, FormatValue, FormatString,
+        NameTarget, TupleTarget, Assign, Unpack, SetItem, If, For, Infer,
+        Constrain, Return,
+    )
+}
+_COMPARISON_OPS = frozenset(("eq", "ne", "lt", "le", "gt", "ge", "in", "not_in", "is", "is_not"))
+_INTRINSIC_NAMES = frozenset(("len", "int", "range", "enumerate", "str.strip", "json.dumps"))
+_RESPONSE_FIELDS = frozenset(("noul", "choice", "confidence", "probabilities", "score", "legend", "items", "text"))
+
+
+@lru_cache(maxsize=None)
+def _field_types(cls):
+    # Only our trusted dataclasses reach this function, never document contents.
+    return get_type_hints(cls)
+
+
+class _Decoder:
+    def __init__(self):
+        self.statement_ids = set()
+
+    def decode(self, value, expected, path):
+        origin = get_origin(expected)
+        args = get_args(expected)
+        if origin in (Union, UnionType):
+            if value is None and type(None) in args:
+                return None
+            options = tuple(t for t in args if t is not type(None))
+            if len(options) == 1:
+                return self.decode(value, options[0], path)
+            # The only non-optional union in the schema is Literal.value.
+            if type(value) in options:
+                return self.decode(value, type(value), path)
+            raise IRDecodeError("expected a JSON scalar", path)
+        if origin is TypingLiteral:
+            if not any(type(value) is type(option) and value == option for option in args):
+                raise IRDecodeError(f"expected one of {args!r}", path)
+            return value
+        if origin is tuple:
+            if type(value) is not list:
+                raise IRDecodeError("expected a JSON array", path)
+            if len(args) == 2 and args[1] is Ellipsis:
+                return tuple(self.decode(v, args[0], f"{path}[{i}]") for i, v in enumerate(value))
+            if len(value) != len(args):
+                raise IRDecodeError(f"expected an array of length {len(args)}", path)
+            return tuple(self.decode(v, t, f"{path}[{i}]") for i, (v, t) in enumerate(zip(value, args)))
+        if expected in (str, bool, int, float, type(None)):
+            if type(value) is not expected:
+                raise IRDecodeError(f"expected {expected.__name__}", path)
+            if expected is float and not math.isfinite(value):
+                raise IRDecodeError("numbers must be finite", path)
+            return value
+        if not isinstance(expected, type) or not is_dataclass(expected):
+            raise TypeError(f"Unsupported internal IR schema type: {expected!r}")
+        if type(value) is not dict:
+            raise IRDecodeError("expected an object", path)
+
+        cls = expected
+        tagged = issubclass(expected, Node)
+        if tagged:
+            kind = value.get("kind")
+            if type(kind) is not str or kind not in _NODE_TYPES:
+                raise IRDecodeError(f"unknown node kind {kind!r}", f"{path}.kind")
+            cls = _NODE_TYPES[kind]
+            if not issubclass(cls, expected):
+                raise IRDecodeError(f"{kind!r} is not a {expected.__name__} node", path)
+
+        definitions = fields(cls)
+        allowed = {f.name for f in definitions} | ({"kind"} if tagged else set())
+        unknown = value.keys() - allowed
+        if unknown:
+            raise IRDecodeError(f"unknown fields: {', '.join(sorted(map(repr, unknown)))}", path)
+        values = {}
+        types = _field_types(cls)
+        for f in definitions:
+            if f.name in value:
+                values[f.name] = self.decode(value[f.name], types[f.name], f"{path}.{f.name}")
+            elif f.default is MISSING and f.default_factory is MISSING:
+                raise IRDecodeError("missing required field", f"{path}.{f.name}")
+        result = cls(**values)
+        self.validate(result, path)
+        return result
+
+    def validate(self, node, path):
+        if isinstance(node, Stmt):
+            if not node.id or node.id in self.statement_ids:
+                raise IRDecodeError("statement IDs must be nonempty and unique", f"{path}.id")
+            self.statement_ids.add(node.id)
+        if isinstance(node, SourceSpan):
+            if min(node.line, node.column, node.end_line, node.end_column) < 1:
+                raise IRDecodeError("source coordinates must be positive", path)
+            if (node.end_line, node.end_column) < (node.line, node.column):
+                raise IRDecodeError("source end precedes its start", path)
+        if isinstance(node, (Var, NameTarget)) and not node.name:
+            raise IRDecodeError("variable name must not be empty", f"{path}.name")
+        if isinstance(node, (Assign, Infer)) and not node.target:
+            raise IRDecodeError("target must not be empty", f"{path}.target")
+        if isinstance(node, Compare):
+            if not node.ops or len(node.ops) != len(node.comparators):
+                raise IRDecodeError("comparison requires matching nonempty operators and operands", path)
+            if any(op not in _COMPARISON_OPS for op in node.ops):
+                raise IRDecodeError("unknown comparison operator", f"{path}.ops")
+        if isinstance(node, BoolOp) and len(node.values) < 2:
+            raise IRDecodeError("boolean operation requires at least two operands", f"{path}.values")
+        if isinstance(node, Intrinsic) and node.name not in _INTRINSIC_NAMES:
+            raise IRDecodeError(f"unknown intrinsic {node.name!r}", f"{path}.name")
+        if isinstance(node, Field) and node.name not in _RESPONSE_FIELDS:
+            raise IRDecodeError(f"unknown response field {node.name!r}", f"{path}.name")
+        if isinstance(node, (Infer, Intrinsic)):
+            names = [name for name, _ in node.kwargs]
+            if any(not name for name in names) or len(names) != len(set(names)):
+                raise IRDecodeError("keyword argument names must be nonempty and unique", f"{path}.kwargs")
