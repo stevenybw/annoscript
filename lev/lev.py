@@ -36,6 +36,8 @@ class NoulResponse:
 
 @dataclass
 class ChoiceResponse:
+    """Choice result; the provider guarantees finite confidence in [0, 1]."""
+
     choice: str
     confidence: float
     probabilities: Dict[str, float]
@@ -98,8 +100,10 @@ class Lev(ABC):
     def choice(self, instructions: str, criteria: Dict[str, str]) -> ChoiceResponse:
         """Select an option using this instance's state and model.
 
-        A successful result must have ``result.choice in criteria``. If no valid
-        option can be returned, report failure rather than an out-of-set choice.
+        A successful result must have ``result.choice in criteria`` and a finite
+        ``result.confidence`` in the inclusive range [0, 1], excluding NaN and
+        infinities. Implementations must enforce these guarantees and report
+        failure if a valid result cannot be produced.
         """
         raise NotImplementedError
 
