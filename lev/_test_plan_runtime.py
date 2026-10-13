@@ -11,6 +11,7 @@ import json
 import operator
 import random
 
+from lev import ir
 from lev.plan import ExecutionPlan
 
 
@@ -90,8 +91,7 @@ class _Executor:
     def __init__(self, plan, lev, mode, order):
         decoded = ExecutionPlan.from_dict(plan)
         self.plan = decoded.to_dict()
-        self.dependencies = [d for d in self.plan["dependencies"] if mode == "strict" or d["kind"] != "failure_order"]
-        decoded.dependencies_for(mode)  # validate mode
+        self.dependencies = [ir._encode(d) for d in decoded.dependencies_for(mode)]
         self.mode, self.order, self.lev = mode, order, lev
         self.tasks = {t["id"]: t for t in self.plan["tasks"]}
         self.regions = {r["id"]: r for r in self.plan["regions"]}
@@ -312,6 +312,10 @@ class _Executor:
             await self.complete_region(root, ())
             assert len(self.returns) == 1, self.returns
             return self.returns[0]
+        except Exception as exc:
+            # A nested check may fail before another root task propagates its
+            # own exception. Report observation order, not region-join order.
+            raise self.failed if self.failed is not None else exc
         finally:
             pending = set(self.futures.values()) | set(self.cache.values())
             for task in pending:

@@ -146,7 +146,7 @@ class _Lowerer:
         for gate in flow.gates:
             self.edge(gate.task, tid, "control", port=gate.port)
         if flow.barrier and flow.barrier != tid:
-            self.edge(flow.barrier, tid, "constraint")
+            self.edge(flow.barrier, tid, "constraint", strict_only=True)
         if sequence and flow.tail:
             self.edge(flow.tail, tid, "failure_order")
         if sequence:
@@ -179,10 +179,10 @@ class _Lowerer:
             elif isinstance(s, ir.Constrain):
                 t = self.add(p.Check, s, region, flow, condition=self.bound(s.condition, flow, s),
                              message=self.bound(s.message, flow, s) if s.message is not None else None)
-                # A check cannot run before preceding active work, including
-                # otherwise unused Infer calls, has completed successfully.
+                # Strict checks wait for prior active work. Eager checks need
+                # only their actual data, control and memory prerequisites.
                 for previous in self.regions[region].tasks[:-1]:
-                    self.edge(previous, t.id, "constraint")
+                    self.edge(previous, t.id, "constraint", strict_only=True)
                 flow.barrier = t.id
             elif isinstance(s, ir.Return):
                 if p.loop_path(region, self.regions):
@@ -272,13 +272,12 @@ class _Lowerer:
             self.value_edge(update, c.id, carried=tid, distance=1, seed=c.initial)
         if child.tail:
             self.edge(child.tail, item.id, "failure_order", carried=tid, distance=1)
-        # Strict advancement is itself an iteration barrier. Checks require
-        # the same barrier in eager mode; source-order constraints stay active.
+        # Checks preserve source order in strict mode, but do not alone force
+        # eager iteration sequencing. Memory analysis may still require it.
         has_check = any(isinstance(x, ir.Constrain) for x in walk_statements(s.body))
         if has_check:
-            self.tasks[tid] = replace(self.tasks[tid], serial_modes=("eager", "strict"))
             if child.tail:
-                self.edge(child.tail, item.id, "constraint", carried=tid, distance=1)
+                self.edge(child.tail, item.id, "constraint", carried=tid, distance=1, strict_only=True)
             flow.barrier = tid
 
     def finish(self):
@@ -393,7 +392,10 @@ class _Lowerer:
                         result |= accesses(c)
                     return result
                 reads |= accesses(b.expression)
-                if isinstance(t, (p.Return, p.Loop, p.Unpack)):
+                # Check truth-tests the result even when its expression is a
+                # bare container Var. Protect that read (and its message) from
+                # later writes now that eager checks are not global barriers.
+                if isinstance(t, (p.Return, p.Loop, p.Unpack, p.Check)):
                     reads |= reach(b.expression, bindings, t.id)
             if isinstance(t, p.Infer):
                 reads |= self.aliases[t.arguments]

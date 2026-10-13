@@ -12,10 +12,11 @@ Sharing is local to a request, reuse scope, and dependency/repair generation.
 It is not eager hoisting, global memoization, retrying, or a batch assignment.
 Response values are read-only. Identity-observing programs disable sharing.
 
-Eager execution omits failure_order edges and reports the first observed error.
-Strict execution includes them, preserving the sequential failure prefix (with
-equivalent requests shared). Both stop dispatch on failure, best-effort cancel
-in-flight work, respect checks, and await all active work before success.
+Eager execution omits failure_order and explicitly strict_only ordering edges,
+allowing independent work to pass pending checks. Strict execution includes them,
+preserving the sequential failure prefix (with equivalent requests shared).
+Both report the first observed error, stop dispatch on failure, best-effort cancel
+in-flight work, and await all active work, including checks, before success.
 Resource exhaustion is outside the static expression safety model.
 
 BoundExpr captures value bindings, not copies of their containers. State and
@@ -24,13 +25,16 @@ means its predicate is known; Join.done means its selected region has completed,
 and Join.continue is false if that path returned (including nested returns).
 Loop.enter activates iteration regions; Loop.done gathers all active iterations
 and publishes exports. serial_modes additionally orders iterator advancement
-after the preceding region finishes, preserving iterator faults and checks.
+after the preceding region finishes, preserving iterator faults in strict mode
+and necessary mutable-iterator ordering in both modes.
 Carry uses its initial value in iteration zero and update from the prior round.
 Merge reads only the selected arm. Return supplies a candidate result: success
 also requires completion of all activated required work in the root region.
 
-Checks validate captured expressions on their original paths and gate later
-work. They do not introduce solving scopes or authorize changing branch choices.
+Checks validate captured expressions on their original paths. Data, control and
+memory dependencies apply in both modes; source-order check barriers apply only
+in strict mode. A check alone does not serialize eager loop iterations. Checks
+do not introduce solving scopes or authorize changing branch choices.
 Any future repair must invalidate downstream values and shared request caches
 for the affected dependency generation; this module implements no repair.
 """
@@ -107,6 +111,10 @@ class Dependency:
     certainty: Literal["proven", "conservative"] = "proven"
     condition: Gate | None = None
     seed: str | None = None
+    # Constraint ordering can be relaxed without dropping check input/memory
+    # dependencies. Absent flags retain the stronger semantics of older plans.
+    # failure_order edges are always strict-only, including legacy plans.
+    strict_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -246,7 +254,8 @@ class ExecutionPlan:
         """Select edges; region, loop, demand and root-completion rules still apply."""
         if mode not in ("eager", "strict"):
             raise ValueError(f"unknown failure mode {mode!r}")
-        return tuple(d for d in self.dependencies if mode == "strict" or d.kind != "failure_order")
+        return tuple(d for d in self.dependencies
+                     if mode == "strict" or (d.kind != "failure_order" and not d.strict_only))
 
     def to_dict(self) -> dict:
         return ir._encode(self)
@@ -491,6 +500,9 @@ def _validate(plan):
     graph = {t: set() for t in ts}
     for d in plan.dependencies:
         require(d.source in ts and d.target in ts, "unknown dependency endpoint")
+        require(type(d.strict_only) is bool, "strict_only must be a boolean", d.target)
+        require(not d.strict_only or d.kind in ("constraint", "failure_order"),
+                "data, control and memory dependencies cannot be strict-only", d.target)
         m = d.mapping
         require(m.source_loops == loop_path(ts[d.source].region, rs)
                 and m.target_loops == loop_path(ts[d.target].region, rs), "incorrect instance mapping", d.target)

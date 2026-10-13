@@ -405,7 +405,7 @@
       <section class="graph-pane" aria-label="依赖图">
         <div class="legend">
           <span><i style="color: #7294b4"></i>数据 / 控制</span
-          ><span><i style="color: #c58a39"></i>约束屏障</span
+          ><span><i style="color: #c58a39"></i>约束顺序依赖</span
           ><span><i style="color: #c87373"></i>严格顺序</span
           ><span
             ><i style="color: #8565b0; border-top-style: dashed"></i
@@ -498,7 +498,7 @@
         el(
           "p",
           mode === "eager"
-            ? "允许独立请求并发；失败时可能已有额外调用发出。"
+            ? "独立请求可越过待完成的约束检查；成功返回仍须通过全部检查，失败时可能已有额外调用发出。"
             : "保留失败顺序；本 request 的调用通常需要等待前序操作。",
           panel,
           "muted",
@@ -541,7 +541,11 @@
         el("summary", "查看跨算子的并行候选", more);
         cards(report.parallel, (g) => `依赖层 ${g.layer}`, more);
         const checks = el("details", undefined, panel);
-        el("summary", `约束屏障 · ${report.checks.length}`, checks);
+        el(
+          "summary",
+          `约束检查 · ${report.checks.length}${mode === "strict" ? " · 顺序屏障" : " · 成功返回前必须通过"}`,
+          checks,
+        );
         for (const c of report.checks) block(c.id, c.condition, checks);
         if (report.unresolved_cycles.length)
           el(
@@ -756,7 +760,9 @@
             ),
           );
           members.forEach((id, j) => {
-            const count = Math.min(3, members.length - Math.floor(j / 3) * 3),
+            // Keep multi-row columns aligned so vertical edge lanes never
+            // run through a centered, partially filled last row.
+            const count = Math.min(3, members.length),
               x =
                 (WIDTH - (count * W + (count - 1) * G)) / 2 + (j % 3) * (W + G);
             positions[id] = {

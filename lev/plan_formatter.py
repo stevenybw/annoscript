@@ -2,9 +2,10 @@
 
 The projection includes implicit region completion and iteration activation;
 Loop.enter must not be confused with Loop.done. Edges are a union of possible
-paths, not a new executable schedule. Guards, pure computations and checks still
-govern actual readiness. Carried edges retain witnesses rather than inventing a
-single iteration distance for a transitive path with multiple recurrences.
+paths, not a new executable schedule. Guards and the selected mode's prerequisites
+govern actual readiness; success always awaits checks. Carried edges retain
+witnesses rather than inventing a single iteration distance for a transitive
+path with multiple recurrences.
 """
 
 from __future__ import annotations
@@ -35,7 +36,8 @@ class _Arc:
 
 _NOTES = (
     "节点表示静态 Infer 调用位置；循环可产生多个实例，共享请求可能只发起一次。",
-    "依赖图是所有可能路径的并集；分支、纯计算和约束通过后才会就绪，不执行未选分支。",
+    "依赖图是所有可能路径的并集；调用须满足各自的数据、控制和内存依赖，不执行未选分支。",
+    "eager 允许独立任务越过尚未完成的约束检查；strict 保留约束顺序屏障。两者成功返回前都须通过当前路径上的全部检查。",
     "依赖层用于阅读，不是固定调度波次。并行候选是保守子集，不是对实际并发量的预测。",
     "同算子只构成批处理候选：还需同时就绪、模型/系统提示词/后端选项兼容。不同参数可能要求拆批。",
     "严格模式保留单条 request 的失败顺序；跨 request 的调度与批处理不在此图中。",
@@ -396,7 +398,7 @@ def format_plan(plan: p.ExecutionPlan, *, mode: p.FailureMode = "eager", show_so
             lines.append("    跨迭代共享请求（不是多次调用待批处理）: " + ", ".join(loop["shared_sites"]))
         if loop["carried_values"]:
             lines.append("    携带值: " + ", ".join(loop["carried_values"]))
-    lines.extend(("", "约束屏障："))
+    lines.extend(("", "约束检查（strict 顺序屏障）：" if mode == "strict" else "约束检查（成功返回前必须通过）："))
     lines.extend(f"  {c['id']}: {c['condition']}" for c in data["checks"])
     if data["unresolved_cycles"]:
         lines.append("未解析的同轮环（不据此推断并行）: " + ", ".join(data["unresolved_cycles"]))
