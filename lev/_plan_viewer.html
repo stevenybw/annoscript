@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>__PLAN_TITLE__ · Lev Execution Plan</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172635;
+        --muted: #617286;
+        --line: #dce4eb;
+        --paper: #fff;
+        --accent: #006d77;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: #f5f7fa;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        padding: 20px 28px 15px;
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 2px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      h1 {
+        font-size: 23px;
+        line-height: 1.4;
+        margin: 5px 0;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--line);
+        background: var(--paper);
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button,
+      select {
+        border: 1px solid #cbd6df;
+        border-radius: 6px;
+        background: white;
+        padding: 5px 10px;
+        color: var(--ink);
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover,
+      select:hover {
+        border-color: var(--accent);
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid #83c5be;
+        outline-offset: 2px;
+      }
+      .toolbar label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 12px;
+      }
+      .toolbar input[type="search"] {
+        padding: 6px 9px;
+        border: 1px solid #cbd6df;
+        border-radius: 6px;
+        width: 170px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 330px;
+        flex: 1;
+        min-height: 0;
+      }
+      .graph-pane {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .legend {
+        padding: 9px 24px;
+        font-size: 11px;
+        display: flex;
+        gap: 18px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+      }
+      .legend i {
+        display: inline-block;
+        width: 20px;
+        border-top: 2px solid;
+        vertical-align: middle;
+        margin-right: 5px;
+      }
+      .canvas {
+        overflow: auto;
+        flex: 1;
+        min-height: 0;
+        padding: 10px 18px 36px;
+        background-image: radial-gradient(#d9e1e8 0.65px, transparent 0.65px);
+        background-size: 16px 16px;
+      }
+      .canvas svg {
+        display: block;
+        margin: auto;
+        overflow: visible;
+      }
+      aside {
+        border-left: 1px solid var(--line);
+        background: var(--paper);
+        padding: 20px;
+        overflow: auto;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 12px;
+      }
+      h3 {
+        font-size: 13px;
+        margin: 22px 0 8px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+      .stat {
+        background: #f1f5f8;
+        border-radius: 8px;
+        padding: 9px 5px;
+        text-align: center;
+      }
+      .stat strong {
+        display: block;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+      .stat span {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        margin: 9px 0;
+      }
+      .card-title {
+        font-size: 12px;
+        font-weight: 650;
+        margin-bottom: 7px;
+      }
+      .chips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-size: 11px;
+        padding: 2px 7px;
+        color: var(--accent);
+        background: #edf8f6;
+        border-color: #c5e4df;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 10px;
+        background: #e8f5f0;
+        color: #15624e;
+      }
+      .badge.warn {
+        background: #fff3de;
+        color: #96611c;
+      }
+      .note {
+        font-size: 11px;
+        color: var(--muted);
+        padding: 9px 0;
+        border-top: 1px solid #edf1f4;
+      }
+      pre {
+        font:
+          11px/1.6 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #f4f7f9;
+        padding: 10px;
+        border-radius: 6px;
+        margin: 8px 0;
+      }
+      .node {
+        cursor: pointer;
+        outline: none;
+      }
+      .node:focus rect {
+        stroke: #006d77;
+        stroke-width: 3;
+      }
+      .node rect {
+        transition:
+          fill 0.12s,
+          stroke 0.12s;
+      }
+      .node .id {
+        font-size: 11px;
+        font-weight: 750;
+      }
+      .node .label {
+        font-size: 12px;
+        fill: #253646;
+      }
+      .node .meta {
+        font-size: 10px;
+        fill: #748396;
+      }
+      .node.selected rect {
+        stroke: #007f86;
+        stroke-width: 3;
+        fill: #eaf8f5;
+      }
+      .node.related rect {
+        stroke: #007f86;
+        stroke-width: 2;
+      }
+      .node.dim {
+        opacity: 0.25;
+      }
+      .edge {
+        fill: none;
+        stroke-width: 1.5;
+        stroke-linejoin: round;
+        opacity: 0.7;
+      }
+      .edge.carried {
+        stroke-dasharray: 5 4;
+      }
+      .edge.focused {
+        stroke-width: 2.5;
+        opacity: 1;
+      }
+      .edge.dim {
+        opacity: 0.1;
+      }
+      .edge-hit {
+        fill: none;
+        stroke: transparent;
+        stroke-width: 13;
+        cursor: pointer;
+      }
+      .stage {
+        fill: #fff;
+        fill-opacity: 0.58;
+        stroke: #e3eaf0;
+        stroke-dasharray: 3 4;
+      }
+      .stage-title {
+        font-size: 10px;
+        fill: #718194;
+      }
+      .empty {
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+      }
+      details {
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        font-size: 12px;
+      }
+      #status {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      @media (max-width: 850px) {
+        .workspace {
+          grid-template-columns: minmax(0, 1fr) 285px;
+        }
+        .toolbar {
+          gap: 8px;
+          padding: 10px;
+        }
+        header {
+          padding: 14px 18px;
+        }
+        .legend {
+          gap: 9px;
+          padding: 8px;
+          font-size: 10px;
+        }
+        aside {
+          padding: 13px;
+        }
+      }
+      @media (max-width: 620px) {
+        body {
+          height: auto;
+          min-height: 100vh;
+        }
+        .workspace {
+          display: flex;
+          flex-direction: column;
+        }
+        .canvas {
+          height: 65vh;
+          min-height: 380px;
+        }
+        .graph-pane {
+          flex: none;
+        }
+        aside {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+          overflow: visible;
+        }
+        .legend {
+          flex-wrap: wrap;
+        }
+        .spacer {
+          display: none;
+        }
+        .toolbar input[type="search"] {
+          width: 135px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">LEV / EXECUTION PLAN</div>
+      <h1>
+        __PLAN_TITLE__
+        <span style="font-weight: 400; color: #81909e">· Infer 依赖</span>
+      </h1>
+      <p>
+        沿着依赖找到并行与批处理机会。图中节点是调用位置，实际就绪状态由运行时决定。
+      </p>
+    </header>
+    <div class="toolbar">
+      <label
+        >失败模式
+        <select id="mode" aria-label="失败模式">
+          <option value="eager">eager · 允许失败前并发</option>
+          <option value="strict">strict · 保留失败顺序</option>
+        </select></label
+      >
+      <label><input type="checkbox" id="transitive" />传递边</label
+      ><label><input type="checkbox" id="carried" checked />跨迭代边</label>
+      <input
+        id="search"
+        type="search"
+        placeholder="搜索调用 / 指令"
+        aria-label="搜索调用或指令"
+      />
+      <span class="spacer"></span><button id="minus" aria-label="缩小">−</button
+      ><span id="zoom">100%</span><button id="plus" aria-label="放大">＋</button
+      ><button id="fit">适合宽度</button><button id="reset">全部机会</button>
+    </div>
+    <div class="workspace">
+      <section class="graph-pane" aria-label="依赖图">
+        <div class="legend">
+          <span><i style="color: #7294b4"></i>数据 / 控制</span
+          ><span><i style="color: #c58a39"></i>约束屏障</span
+          ><span><i style="color: #c87373"></i>严格顺序</span
+          ><span
+            ><i style="color: #8565b0; border-top-style: dashed"></i
+            >跨迭代</span
+          ><span id="status"></span>
+        </div>
+        <div class="canvas" id="canvas">
+          <svg id="graph" role="img" aria-label="Infer 依赖图"></svg>
+        </div>
+      </section>
+      <aside id="details" aria-live="polite"></aside>
+    </div>
+    <script id="plan-data" type="application/json">
+      __PLAN_DATA__
+    </script>
+    <script>
+      "use strict";
+      const DATA = JSON.parse(document.getElementById("plan-data").textContent);
+      const $ = (id) => document.getElementById(id),
+        NS = "http://www.w3.org/2000/svg";
+      const color = {
+        choice: "#3473aa",
+        generate: "#007f75",
+        extract: "#7c5fa7",
+        generate_list: "#397f50",
+        score: "#a27238",
+        noul: "#8a5d73",
+      };
+      let mode = DATA.initial_mode,
+        report = DATA[mode],
+        selected = [],
+        positions = {},
+        scale = 1,
+        size = { width: 850, height: 300 };
+      $("mode").value = mode;
+      function el(tag, text, parent, cls) {
+        const n = document.createElement(tag);
+        if (text !== undefined) n.textContent = text;
+        if (cls) n.className = cls;
+        if (parent) parent.append(n);
+        return n;
+      }
+      function svg(tag, attrs = {}, text) {
+        const n = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+        if (text !== undefined) n.textContent = text;
+        return n;
+      }
+      function block(title, text, parent = $("details")) {
+        el("h3", title, parent);
+        return el("pre", text, parent);
+      }
+      function chips(sites, parent) {
+        const row = el("div", undefined, parent, "chips");
+        for (const id of sites) {
+          const b = el("button", id, row, "chip");
+          b.onclick = () => select([id], true);
+        }
+        return row;
+      }
+      function cards(groups, label, parent) {
+        if (!groups.length)
+          el("p", "当前模式未发现此类静态候选。", parent, "muted");
+        for (const g of groups) {
+          const box = el("div", undefined, parent, "card");
+          el("div", label(g), box, "card-title");
+          chips(g.sites, box);
+          const b = el("button", "定位这一组", box, "chip");
+          b.style.marginTop = "8px";
+          b.onclick = () => select(g.sites, true);
+        }
+      }
+      function opportunities() {
+        const panel = $("details");
+        panel.replaceChildren();
+        el("h2", "可调度的机会", panel);
+        const stats = el("div", undefined, panel, "stats");
+        for (const [v, t] of [
+          [report.stats.infer_sites, "Infer 位置"],
+          [report.batches.length, "同算子候选组"],
+          [
+            report.loops.filter((l) => l.parallel_iterations).length,
+            "可并行循环",
+          ],
+        ]) {
+          const s = el("div", undefined, stats, "stat");
+          el("strong", String(v), s);
+          el("span", t, s);
+        }
+        el(
+          "p",
+          mode === "eager"
+            ? "允许独立请求并发；失败时可能已有额外调用发出。"
+            : "保留失败顺序；本 request 的调用通常需要等待前序操作。",
+          panel,
+          "muted",
+        );
+        el("h3", "同算子批处理候选", panel);
+        cards(
+          report.batches,
+          (g) => `${g.operation} · 依赖层 ${g.layer}`,
+          panel,
+        );
+        el("h3", "跨迭代调用", panel);
+        for (const loop of report.loops.filter((l) => l.sites.length)) {
+          const box = el("div", undefined, panel, "card");
+          el(
+            "div",
+            `${loop.id} · ${loop.parallel_iterations ? "可跨迭代并行" : "存在迭代顺序限制"}`,
+            box,
+            "card-title",
+          );
+          chips(loop.sites, box);
+          el("p", loop.iterable, box, "muted");
+          if (loop.batch_sites.length)
+            el("span", "跨迭代批处理候选", box, "badge");
+          if (loop.shared_sites.length)
+            el(
+              "p",
+              `共享调用 ${loop.shared_sites.join(", ")}：复用结果，不作为多次请求合批。`,
+              box,
+              "muted",
+            );
+          if (loop.carried_values.length)
+            el(
+              "p",
+              `携带值：${loop.carried_values.join(", ")}。仅有累积依赖不代表 Infer 必须串行。`,
+              box,
+              "muted",
+            );
+        }
+        const more = el("details", undefined, panel);
+        el("summary", "查看跨算子的并行候选", more);
+        cards(report.parallel, (g) => `依赖层 ${g.layer}`, more);
+        const checks = el("details", undefined, panel);
+        el("summary", `约束屏障 · ${report.checks.length}`, checks);
+        for (const c of report.checks) block(c.id, c.condition, checks);
+        if (report.unresolved_cycles.length)
+          el(
+            "p",
+            `未解析同轮环：${report.unresolved_cycles.join(", ")}。不据此推断并行。`,
+            panel,
+            "note",
+          );
+        for (const note of report.notes) el("p", note, panel, "note");
+      }
+      function showNode(id) {
+        const n = report.nodes.find((n) => n.id === id),
+          panel = $("details");
+        panel.replaceChildren();
+        const back = el("button", "← 全部机会", panel);
+        back.onclick = () => select([]);
+        el("h2", `${n.id} · ${n.operation}`, panel);
+        el("p", n.label, panel, "muted");
+        block("完整指令（符号表示）", n.prompt);
+        block(
+          "激活条件",
+          n.gates.join("\n") || "无分支条件；仍需等待输入计算与前置依赖。",
+        );
+        block(
+          "请求与作用域",
+          `${n.request} · ${n.reusable ? "允许共享" : "不共享"}\n循环：${n.loops.join(", ") || "无"}\n复用作用域：${n.reuse_scope.join(" / ") || "request"}`,
+        );
+        const peers = report.nodes
+          .filter((x) => x.request === n.request && x.id !== n.id)
+          .map((x) => x.id);
+        if (peers.length) {
+          el("h3", "共享此请求的其他位置", panel);
+          chips(peers, panel);
+        }
+        el("h3", "上游 Infer（含条件路径）", panel);
+        chips(
+          [
+            ...new Set(
+              report.edges.filter((e) => e.target === id).map((e) => e.source),
+            ),
+          ],
+          panel,
+        );
+        el("h3", "下游 Infer", panel);
+        chips(
+          [
+            ...new Set(
+              report.edges.filter((e) => e.source === id).map((e) => e.target),
+            ),
+          ],
+          panel,
+        );
+        const args = el("details", undefined, panel);
+        el("summary", "参数与关键词", args);
+        block("(位置参数, 关键词值)", n.arguments, args);
+        block("关键词顺序", n.keywords.join(", "), args);
+        const source = el("details", undefined, panel);
+        source.open = DATA.show_source;
+        el("summary", "来源与原始标识", source);
+        block(
+          "来源",
+          [
+            n.task,
+            n.origin,
+            n.source,
+            ...n.calls.map((c) => "inlined from " + c),
+          ].join("\n"),
+          source,
+        );
+      }
+      function showEdge(e) {
+        const panel = $("details");
+        panel.replaceChildren();
+        const back = el("button", "← 全部机会", panel);
+        back.onclick = () => select([]);
+        el("h2", `${e.source} → ${e.target}`, panel);
+        block(
+          "依赖原因",
+          e.kinds.join(" / ") +
+            (e.conservative ? "\n含保守的可能依赖" : "") +
+            (e.hazards.length ? "\n" + e.hazards.join(" / ") : ""),
+        );
+        block(
+          "实例关系",
+          [
+            e.carried ? "存在跨迭代 Infer 依赖" : "同一公共迭代坐标内的依赖",
+            e.gather.length ? "汇合：" + e.gather.join(", ") : "",
+            e.broadcast.length ? "广播：" + e.broadcast.join(", ") : "",
+            ...e.recurrences.map(
+              (r) => `原始循环边 ${r.loop}: distance=${r.distance}`,
+            ),
+            e.via_loops.length
+              ? "路径经过的内部循环：" + e.via_loops.join(", ")
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        );
+        if (e.guards.length)
+          block("可能路径上的条件（不是一个合取条件）", e.guards.join("\n"));
+        el(
+          "p",
+          "下方是一条依赖路径见证；原因和条件汇总可能包含其他路径。跨多条循环边时，不将其简化为单一距离。",
+          panel,
+          "muted",
+        );
+        block(
+          "路径见证",
+          e.witness
+            .map(
+              (w) =>
+                `${w.source.join(".")} → ${w.target.join(".")}${w.kind ? " [" + w.kind + "]" : ""}${w.loop ? " " + w.loop + " +" + w.distance : ""}`,
+            )
+            .join("\n"),
+        );
+      }
+      function select(ids, jump = false) {
+        selected = ids;
+        highlight();
+        if (ids.length === 1) showNode(ids[0]);
+        else if (ids.length > 1) {
+          opportunities();
+          el("p", "已高亮：" + ids.join(", "), $("details"), "note");
+        } else opportunities();
+        if (jump && ids.length) {
+          const pos = positions[ids[0]];
+          $("canvas").scrollTo({
+            top: Math.max(0, pos.y * scale - 45),
+            behavior: "smooth",
+          });
+        }
+      }
+      function visibleEdges() {
+        return report.edges.filter(
+          (e) =>
+            ($("transitive").checked || !e.redundant) &&
+            ($("carried").checked || !e.carried),
+        );
+      }
+      function highlight() {
+        const term = $("search").value.trim().toLowerCase(),
+          near = new Set(selected);
+        for (const e of report.edges)
+          if (selected.includes(e.source) || selected.includes(e.target)) {
+            near.add(e.source);
+            near.add(e.target);
+          }
+        for (const n of report.nodes) {
+          const g = $("node-" + n.id),
+            match =
+              !term ||
+              `${n.id} ${n.operation} ${n.prompt}`.toLowerCase().includes(term);
+          g.classList.toggle("selected", selected.includes(n.id));
+          g.classList.toggle("related", near.has(n.id));
+          g.classList.toggle(
+            "dim",
+            !match || (selected.length > 0 && !near.has(n.id)),
+          );
+        }
+        for (const path of document.querySelectorAll(".edge")) {
+          const active =
+            selected.includes(path.dataset.source) ||
+            selected.includes(path.dataset.target);
+          path.classList.toggle("focused", active);
+          path.classList.toggle("dim", selected.length > 0 && !active);
+        }
+      }
+      function zoom() {
+        const graph = $("graph");
+        graph.setAttribute("width", size.width * scale);
+        graph.setAttribute("height", size.height * scale);
+        $("zoom").textContent = Math.round(scale * 100) + "%";
+      }
+      function fit() {
+        scale = Math.min(
+          1,
+          Math.max(0.25, ($("canvas").clientWidth - 38) / size.width),
+        );
+        zoom();
+      }
+      function draw() {
+        const graph = $("graph");
+        graph.replaceChildren();
+        positions = {};
+        const layers = report.layers.map((a) => [...a]);
+        if (report.unresolved_cycles.length)
+          layers.push(report.unresolved_cycles);
+        const W = 224,
+          H = 100,
+          G = 27,
+          WIDTH = 850;
+        let y = 42;
+        for (let i = 0; i < layers.length; i++) {
+          const members = layers[i],
+            rows = Math.ceil(members.length / 3),
+            height = rows * (H + G) + 25;
+          graph.append(
+            svg("rect", {
+              x: 5,
+              y: y - 25,
+              width: WIDTH - 10,
+              height: height,
+              rx: 12,
+              class: "stage",
+            }),
+          );
+          graph.append(
+            svg(
+              "text",
+              { x: 21, y: y - 9, class: "stage-title" },
+              `依赖层 ${i} · ${members.length} 个位置`,
+            ),
+          );
+          members.forEach((id, j) => {
+            const count = Math.min(3, members.length - Math.floor(j / 3) * 3),
+              x =
+                (WIDTH - (count * W + (count - 1) * G)) / 2 + (j % 3) * (W + G);
+            positions[id] = {
+              x,
+              y: y + Math.floor(j / 3) * (H + G),
+              w: W,
+              h: H,
+              rows,
+              bottom: y + height - 25,
+            };
+          });
+          y += height + 34;
+        }
+        size = { width: WIDTH, height: Math.max(240, y + 10) };
+        graph.setAttribute("viewBox", `0 0 ${size.width} ${size.height}`);
+        const defs = svg("defs"),
+          marker = svg("marker", {
+            id: "arrow",
+            viewBox: "0 0 10 10",
+            refX: 9,
+            refY: 5,
+            markerWidth: 6,
+            markerHeight: 6,
+            orient: "auto-start-reverse",
+          });
+        marker.append(
+          svg("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#8197a9" }),
+        );
+        defs.append(marker);
+        graph.append(defs);
+        const edges = visibleEdges();
+        edges.forEach((e, index) => {
+          const a = positions[e.source],
+            b = positions[e.target];
+          let d;
+          if (e.source === e.target) {
+            d = `M ${a.x + a.w - 22} ${a.y} C ${a.x + a.w + 58} ${a.y - 54},${a.x + a.w + 58} ${a.y + a.h + 54},${a.x + a.w - 3} ${a.y + a.h - 15}`;
+          } else if (e.carried || b.y <= a.y) {
+            const rail = WIDTH - 18 - (index % 5) * 7;
+            d = `M ${a.x + a.w} ${a.y + 50} C ${rail} ${a.y + 50},${rail} ${b.y + 50},${b.x + b.w} ${b.y + 50}`;
+          } else if (a.rows > 1 || b.rows > 1) {
+            const out = a.x + a.w + 10,
+              into = b.x - 12,
+              middle = a.bottom + 12;
+            d = `M ${a.x + a.w} ${a.y + 50} H ${out} V ${middle} H ${into} V ${b.y + 50} H ${b.x}`;
+          } else {
+            const startX = a.x + a.w / 2,
+              endX = b.x + b.w / 2,
+              mid = (a.y + a.h + b.y) / 2;
+            d = `M ${startX} ${a.y + a.h} C ${startX} ${mid},${endX} ${mid},${endX} ${b.y}`;
+          }
+          const stroke = e.carried
+            ? "#8565b0"
+            : e.kinds.includes("failure_order")
+              ? "#c87373"
+              : e.kinds.includes("constraint")
+                ? "#c58a39"
+                : "#7294b4";
+          const line = svg("path", {
+            d,
+            stroke,
+            class: "edge" + (e.carried ? " carried" : ""),
+            "marker-end": "url(#arrow)",
+          });
+          line.dataset.source = e.source;
+          line.dataset.target = e.target;
+          graph.append(line);
+          const hit = svg("path", { d, class: "edge-hit" });
+          hit.append(
+            svg(
+              "title",
+              {},
+              `${e.source} → ${e.target}: ${e.kinds.join(" / ")}${e.carried ? " (loop-carried)" : ""}`,
+            ),
+          );
+          hit.onclick = () => {
+            selected = [e.source, e.target];
+            highlight();
+            showEdge(e);
+          };
+          graph.append(hit);
+        });
+        for (const n of report.nodes) {
+          const pos = positions[n.id],
+            g = svg("g", {
+              id: "node-" + n.id,
+              transform: `translate(${pos.x} ${pos.y})`,
+              class: "node",
+              tabindex: 0,
+              role: "button",
+              "aria-label": `${n.id} ${n.operation} ${n.label}`,
+            });
+          g.append(svg("title", {}, `${n.id} ${n.operation}\n${n.prompt}`));
+          g.append(
+            svg("rect", {
+              width: pos.w,
+              height: pos.h,
+              rx: 9,
+              fill: "#fff",
+              stroke: "#cdd9e2",
+            }),
+          );
+          g.append(
+            svg(
+              "text",
+              {
+                x: 12,
+                y: 21,
+                class: "id",
+                fill: color[n.operation] || "#486375",
+              },
+              `${n.id}  ${n.operation}`,
+            ),
+          );
+          const chars = Array.from(n.label);
+          for (let row = 0; row < 2; row++) {
+            let text = chars.slice(row * 17, (row + 1) * 17).join("");
+            if (row === 1 && chars.length > 34) text += "…";
+            g.append(
+              svg("text", { x: 12, y: 43 + row * 17, class: "label" }, text),
+            );
+          }
+          g.append(
+            svg(
+              "text",
+              { x: 12, y: 85, class: "meta" },
+              [n.request, n.loops.join("/"), n.gates.length ? "条件激活" : ""]
+                .filter(Boolean)
+                .join(" · "),
+            ),
+          );
+          g.onclick = () => select([n.id]);
+          g.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              select([n.id]);
+            }
+          };
+          graph.append(g);
+        }
+        if (!report.nodes.length) {
+          graph.append(
+            svg(
+              "text",
+              { x: 200, y: 100, fill: "#617286" },
+              "该 Plan 没有 Infer 调用。",
+            ),
+          );
+        }
+        $("status").textContent =
+          `${edges.length} / ${report.edges.length} 条投影依赖`;
+        zoom();
+        highlight();
+      }
+      $("mode").onchange = () => {
+        mode = $("mode").value;
+        report = DATA[mode];
+        selected = [];
+        draw();
+        fit();
+        opportunities();
+        $("canvas").scrollTop = 0;
+      };
+      $("transitive").onchange = draw;
+      $("carried").onchange = draw;
+      $("search").oninput = highlight;
+      $("plus").onclick = () => {
+        scale = Math.min(2, scale + 0.15);
+        zoom();
+      };
+      $("minus").onclick = () => {
+        scale = Math.max(0.2, scale - 0.15);
+        zoom();
+      };
+      $("fit").onclick = fit;
+      $("reset").onclick = () => {
+        $("search").value = "";
+        select([]);
+      };
+      draw();
+      fit();
+      opportunities();
+    </script>
+  </body>
+</html>
