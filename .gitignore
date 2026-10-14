@@ -1,0 +1,5 @@
+.credential
+__pycache__/
+*.py[cod]
+.venv/
+lev-live-report*.json

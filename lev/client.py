@@ -211,33 +211,79 @@ class ResultStream(Iterator[Result[R]], ABC):
         raise NotImplementedError
 
 
-class LevClient(ABC):
-    """Client configuration and batch submission contract for a Lev service.
+class LevClient:
+    """Synchronous owner of a previously unstarted LevRuntime.
 
-    ``base_url`` identifies the service's API root; ``submit_path`` is appended
-    to that root, preserving any base path. ``api_key=None`` means no
-    authentication header; otherwise use Bearer authentication. ``timeout`` is
-    the HTTP operation timeout in seconds and must be finite and positive.
-
-    Construction only stores configuration. Concrete implementations use
-    ``_validate_inputs`` for local preconditions and ``_get_program_config`` for
-    remote execution configuration. They handle JSON validation, transport, and
-    scheduling. Function packaging and dependency submission are left to future
-    implementations; local preconditions must always be excluded.
+    Construction performs no network work. A private event-loop thread starts
+    on the first valid submission and is shared by this client's submissions.
+    The client takes ownership of its runtime; use a context manager or close().
     """
 
-    def __init__(
-        self,
-        base_url: str,
-        api_key: str | None = None,
-        *,
-        timeout: float = 60.0,
-        submit_path: str = "/submit",
-    ) -> None:
-        self.base_url = base_url
-        self.api_key = api_key
-        self.timeout = timeout
-        self.submit_path = submit_path
+    def __init__(self, runtime, *, mode="eager"):
+        from lev.runtime import LevRuntime
+        if not isinstance(runtime, LevRuntime):
+            raise TypeError("runtime must be a LevRuntime")
+        if runtime._loop is not None or runtime.closed or getattr(runtime, "_client_owner", None) is not None:
+            raise ValueError("client requires an unstarted runtime")
+        if mode not in ("eager", "strict"):
+            raise ValueError("mode must be eager or strict")
+        self.runtime, self.mode = runtime, mode
+        runtime._client_owner = self
+        self._loop = self._thread = None
+        self._streams = set()
+        self.closed = False
+
+    @classmethod
+    def from_env(cls, *, env_file=None, mode="eager", disable_thinking=True,
+                 timeout=60.0, **runtime_options):
+        from lev.backends.config import backends_from_env
+        from lev.runtime import LevRuntime
+        decision, llm = backends_from_env(env_file=env_file, disable_thinking=disable_thinking, timeout=timeout)
+        return cls(LevRuntime(decision, llm, **runtime_options), mode=mode)
+
+    def _start(self):
+        if self._loop is None:
+            import asyncio
+            from threading import Thread, Event
+            self._loop = asyncio.new_event_loop()
+            started = Event()
+            def serve():
+                asyncio.set_event_loop(self._loop)
+                self._loop.call_soon(started.set)
+                self._loop.run_forever()
+                self._loop.close()
+            self._thread = Thread(target=serve, name="lev-runtime", daemon=True)
+            self._thread.start()
+            started.wait()
+
+    def _call(self, coroutine):
+        import asyncio
+        return asyncio.run_coroutine_threadsafe(coroutine, self._loop).result()
+
+    def __enter__(self):
+        if self.closed:
+            raise RuntimeError("client is closed")
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        try:
+            for stream in list(self._streams):
+                stream.close()
+            if self._loop is not None:
+                self._call(self.runtime.aclose())
+            else:
+                import asyncio
+                asyncio.run(self.runtime.aclose())
+        finally:
+            if self._loop is not None:
+                self._loop.call_soon_threadsafe(self._loop.stop)
+                self._thread.join()
 
     @staticmethod
     def _get_program_config(program: Callable[[Lev], R]) -> dict[str, JSONValue]:
@@ -277,7 +323,6 @@ class LevClient(ABC):
                 errors[index] = ResultError(code="invalid_input", message=str(error))
         return errors
 
-    @abstractmethod
     def submit(
         self,
         program: Callable[[Lev], R],
@@ -332,4 +377,60 @@ class LevClient(ABC):
         Use the returned stream as a context manager to release resources even
         when the consumer stops early or raises an exception.
         """
-        raise NotImplementedError
+        from lev._data import snapshot
+        from lev.compiler import compile_program
+        from lev.plan_lowering import lower_to_plan
+        from lev.runtime import RunInput
+        if self.closed:
+            raise RuntimeError("client is closed")
+        if not isinstance(inputs, list):
+            raise TypeError("inputs must be a list")
+        errors, valid = {}, []
+        for index, state in enumerate(inputs):
+            try:
+                valid.append(RunInput(index, snapshot(state, state=True)))
+            except (ValueError, RecursionError):
+                errors[index] = ResultError("invalid_input", "input must contain finite JSON data and have string, array or object shape")
+        checked = self._validate_inputs(program, [item.state for item in valid])
+        errors.update({valid[i].index: error for i, error in checked.items()})
+        valid = [item for i, item in enumerate(valid) if i not in checked]
+        plan = lower_to_plan(compile_program(program))
+        self._start()
+        source = self._call(self.runtime.submit(plan, valid, mode=self.mode))
+        stream = _ClientStream(self, source, errors, ordered)
+        self._streams.add(stream)
+        return stream
+
+
+class _ClientStream(ResultStream):
+    def __init__(self, client, source, errors, ordered):
+        super().__init__()
+        self.client, self.source, self.ordered = client, source, ordered
+        self.local = iter(Result(i, "error", error=e) for i, e in sorted(errors.items()))
+        self.buffer, self.index = {}, 0
+
+    def _pull(self):
+        try:
+            return next(self.local)
+        except StopIteration:
+            try:
+                return self.client._call(self.source.__anext__())
+            except StopAsyncIteration:
+                raise StopIteration from None
+
+    def _next_result(self):
+        if not self.ordered:
+            return self._pull()
+        while self.index not in self.buffer:
+            result = self._pull()
+            self.buffer[result.index] = result
+        result = self.buffer.pop(self.index)
+        self.index += 1
+        return result
+
+    def _close(self):
+        try:
+            self.client._call(self.source.aclose())
+        finally:
+            self.buffer.clear()
+            self.client._streams.discard(self)
