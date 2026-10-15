@@ -3,12 +3,17 @@
 import json
 
 from lev._data import thaw
+from lev._backend_profiles import validate_generation_profile
 from lev.lev import ExtractResponse, GenerateResponse, GenerateListResponse
 from .base import HTTPBackend, InferenceOutput, InferenceError, validate_response, LLM_OPERATIONS
+from ._grammar import ITEMS_GRAMMAR
 
 
 class LLMAPIBackend(HTTPBackend):
-    def __init__(self, *args, disable_thinking=True, **kwargs):
+    def __init__(self, *args, profile="legacy", disable_thinking=True, **kwargs):
+        self.profile = validate_generation_profile(profile)
+        if type(disable_thinking) is not bool:
+            raise ValueError("disable_thinking must be a boolean")
         super().__init__(*args, **kwargs)
         self.disable_thinking = disable_thinking
 
@@ -34,9 +39,15 @@ class LLMAPIBackend(HTTPBackend):
         messages.append({"role": "user", "content": json.dumps({"state": thaw(context.state), "operation": call.operation, "task": a}, ensure_ascii=False, allow_nan=False)})
         payload = {"model": self.model, "messages": messages}
         if self.disable_thinking:
-            payload["thinking"] = {"type": "disabled"}
+            if self.profile == "qwen_vllm":
+                payload["chat_template_kwargs"] = {"enable_thinking": False}
+            else:
+                payload["thinking"] = {"type": "disabled"}
         if call.operation != "generate":
-            payload["response_format"] = {"type": "json_object"}
+            if self.profile == "qwen_vllm":
+                payload["structured_outputs"] = {"grammar": ITEMS_GRAMMAR}
+            else:
+                payload["response_format"] = {"type": "json_object"}
         if a.get("max_num_tokens") is not None:
             payload["max_tokens"] = a["max_num_tokens"]
         data, metadata = await self.post(self.base_url + "/chat/completions", payload)

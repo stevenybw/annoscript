@@ -8,6 +8,7 @@ import sys
 from urllib.parse import urlsplit
 
 from lev.job_protocol import decode, encode
+from lev._backend_profiles import validate_generation_profile
 
 RUNTIME = {"max_active_runs": 1, "max_decision_inflight": 4, "max_llm_inflight": 4,
            "max_batch_questions": 32, "loop_window": 32, "local_task_budget": 1024}
@@ -32,13 +33,17 @@ def manifest(config):
     models = {}
     for name in ("decision", "generation"):
         model = config.get(name)
-        if (type(model) is not dict or set(model) != {"base_url", "model", "revision"}
+        required = {"base_url", "model", "revision"}
+        allowed_model = required | ({"profile"} if name == "generation" else set())
+        if (type(model) is not dict or not required <= set(model) or set(model) - allowed_model
                 or any(type(v) is not str or not v.strip() for v in model.values())):
             raise ValueError(f"{name} needs base_url, model and immutable deployment revision")
         url = urlsplit(model["base_url"])
         if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
             raise ValueError("model URL must be HTTP(S), without credentials, query or fragment")
         models[name] = model.copy()
+        if name == "generation":
+            models[name]["profile"] = validate_generation_profile(model.get("profile", "legacy"))
     runtime, policy = {**RUNTIME, **config.get("runtime", {})}, {**POLICY, **config.get("policy", {})}
     if (set(runtime) != set(RUNTIME) or any(type(v) is not int or v < 1 for v in runtime.values())
             or runtime["max_active_runs"] != 1 or set(policy) != set(POLICY)

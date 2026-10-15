@@ -350,7 +350,7 @@ class ClientTests(unittest.TestCase):
 import importlib.abc, sys
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, name, *args):
-        if name.startswith(("lev.runtime", "lev.backends", "lev.plan", "lev.server", "fastapi", "uvicorn")):
+        if name.startswith(("lev.runtime", "lev.backends", "lev.plan", "lev.server", "fastapi", "uvicorn", "xgrammar", "vllm")):
             raise AssertionError("forbidden import: " + name)
 sys.meta_path.insert(0, Block())
 from lev.test_jobs import Wire, checked, Clock

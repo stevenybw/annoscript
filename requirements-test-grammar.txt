@@ -1,0 +1,3 @@
+# Dedicated Python 3.12 CPU-only acceptance; not installed by clients or servers.
+-r requirements.txt
+xgrammar==0.2.0

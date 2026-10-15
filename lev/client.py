@@ -63,10 +63,11 @@ class LevClient:
 
     @classmethod
     def from_env(cls, *, env_file=None, mode="eager", disable_thinking=True,
-                 timeout=60.0, **runtime_options):
+                 generation_profile=None, timeout=60.0, **runtime_options):
         from lev.backends.config import backends_from_env
         from lev.runtime import LevRuntime
-        decision, llm = backends_from_env(env_file=env_file, disable_thinking=disable_thinking, timeout=timeout)
+        decision, llm = backends_from_env(env_file=env_file, disable_thinking=disable_thinking,
+                                         generation_profile=generation_profile, timeout=timeout)
         return cls(LevRuntime(decision, llm, **runtime_options), mode=mode)
 
     def _start(self):

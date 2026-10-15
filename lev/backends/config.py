@@ -5,11 +5,12 @@ import re
 import shlex
 from pathlib import Path
 
+from lev._backend_profiles import validate_generation_profile
 from .decision import DecisionAPIBackend
 from .llm import LLMAPIBackend
 
 
-def backends_from_env(*, env_file=None, disable_thinking=True, timeout=60.0):
+def backends_from_env(*, env_file=None, disable_thinking=True, generation_profile=None, timeout=60.0):
     values = {}
     if env_file is not None:
         for number, line in enumerate(Path(env_file).read_text(encoding="utf-8").splitlines(), 1):
@@ -26,6 +27,9 @@ def backends_from_env(*, env_file=None, disable_thinking=True, timeout=60.0):
                 raise ValueError(f"invalid environment value at line {number}")
             values[match[1]] = parts[0] if parts else ""
     values.update(os.environ)
+    profile = validate_generation_profile(
+        generation_profile if generation_profile is not None else values.get("LEV_GENERATE_PROFILE", "legacy")
+    )
     def config(prefix):
         names = [f"LEV_{prefix}_{key}" for key in ("BASE_URL", "AUTH_TOKEN", "MODEL")]
         for name in names:
@@ -33,4 +37,4 @@ def backends_from_env(*, env_file=None, disable_thinking=True, timeout=60.0):
                 raise ValueError(f"missing environment variable {name}")
         return [values[name] for name in names]
     return (DecisionAPIBackend(*config("DECISION"), timeout=timeout),
-            LLMAPIBackend(*config("GENERATE"), timeout=timeout, disable_thinking=disable_thinking))
+            LLMAPIBackend(*config("GENERATE"), timeout=timeout, profile=profile, disable_thinking=disable_thinking))

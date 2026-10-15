@@ -26,7 +26,7 @@ def backends(manifest):
     d, g = manifest["decision"], manifest["generation"]
     return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout),
             LLMAPIBackend(g["base_url"], generation_token, g["model"], timeout=timeout,
-                          disable_thinking=manifest["disable_thinking"]))
+                          profile=g["profile"], disable_thinking=manifest["disable_thinking"]))
 
 
 class ObservedBackend:
