@@ -162,8 +162,15 @@ class ResultStream(Iterator[Result[R]], ABC):
             raise StopIteration
         try:
             return self._next_result()
-        except BaseException:
+        except StopIteration:
             self.close()
+            raise
+        except BaseException:
+            try:
+                self.close()
+            except BaseException:
+                import logging
+                logging.getLogger(__name__).warning("Result cleanup failed while handling another exception")
             raise
 
     def close(self) -> None:
@@ -189,7 +196,14 @@ class ResultStream(Iterator[Result[R]], ABC):
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> Literal[False]:
-        self.close()
+        if exc_type is None:
+            self.close()
+        else:
+            try:
+                self.close()
+            except BaseException:
+                import logging
+                logging.getLogger(__name__).warning("Result cleanup failed while handling another exception")
         return False
 
     @abstractmethod

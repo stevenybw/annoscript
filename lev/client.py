@@ -1,4 +1,4 @@
-"""Local Runtime client, with backward-compatible shared contract exports."""
+"""Local or session-owned remote client, with compatible shared contract exports."""
 
 from __future__ import annotations
 
@@ -14,12 +14,21 @@ from lev._client_common import (
 
 
 class LevClient:
-    """Synchronous owner of a previously unstarted LevRuntime.
+    """Synchronous local Runtime owner or simplified remote job client.
 
     Construction performs no network work. A private event-loop thread starts
     on the first valid submission and is shared by this client's submissions.
-    The client takes ownership of its runtime; use a context manager or close().
+    The local client owns its runtime. ``remote()`` owns a remote job session.
+    Use a context manager or close() to release ownership explicitly.
     """
+
+    @property
+    def closed(self):
+        return self._remote.closed if hasattr(self, "_remote") else self._closed
+
+    @closed.setter
+    def closed(self, value):
+        self._closed = value
 
     def __init__(self, runtime, *, mode="eager"):
         from lev.runtime import LevRuntime
@@ -34,6 +43,23 @@ class LevClient:
         self._loop = self._thread = None
         self._streams = set()
         self.closed = False
+
+    @classmethod
+    def remote(cls, base_url, auth_token=None, *, mode="eager", optimize=True,
+               timeout=30.0, transport=None):
+        """Use session-owned durable jobs with in-memory reconnect state.
+
+        Closing this client cancels unfinished remote jobs. A new process does
+        not recover this session; use LevJobClient for explicit durable recovery.
+        """
+        import weakref
+        from lev._remote_jobs import RemoteAdapter, _finalize
+        client = cls.__new__(cls)
+        client._remote = RemoteAdapter(base_url, auth_token, mode=mode, optimize=optimize,
+                                       timeout=timeout, transport=transport)
+        client.mode, client.closed = mode, False
+        client._finalizer = weakref.finalize(client, _finalize, client._remote.session)
+        return client
 
     @classmethod
     def from_env(cls, *, env_file=None, mode="eager", disable_thinking=True,
@@ -68,12 +94,25 @@ class LevClient:
         return self
 
     def __exit__(self, *args):
-        self.close()
+        if args and args[0] is not None:
+            try:
+                self.close()
+            except BaseException:
+                import logging
+                logging.getLogger(__name__).warning("Client cleanup failed while handling another exception")
+        else:
+            self.close()
 
     def close(self):
         if self.closed:
             return
         self.closed = True
+        if hasattr(self, "_remote"):
+            try:
+                self._remote.close()
+            finally:
+                self._finalizer.detach()
+            return
         try:
             for stream in list(self._streams):
                 stream.close()
@@ -144,6 +183,10 @@ class LevClient:
         Use the returned stream as a context manager to release resources even
         when the consumer stops early or raises an exception.
         """
+        if hasattr(self, "_remote"):
+            if self.closed:
+                raise RuntimeError("client is closed")
+            return self._remote.submit(program, inputs, ordered=ordered)
         from lev.compiler import compile_program
         from lev.plan_lowering import lower_to_plan
         from lev.runtime import RunInput

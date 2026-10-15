@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-server.txt
       - run: python -m unittest discover -q
       - run: git diff --check
 
@@ -52,8 +52,12 @@ jobs:
           python-version: "3.12"
       - run: |
           "${{ steps.client.outputs.python-path }}" -m pip install -r requirements.txt
-          "${{ steps.server.outputs.python-path }}" -m pip install -r requirements.txt
+          "${{ steps.server.outputs.python-path }}" -m pip install -r requirements-server.txt
       - run: >-
           python -m lev.cross_version_tests
+          --client-python "${{ steps.client.outputs.python-path }}"
+          --server-python "${{ steps.server.outputs.python-path }}"
+      - run: >-
+          "${{ steps.server.outputs.python-path }}" -m lev.job_cross_version_tests
           --client-python "${{ steps.client.outputs.python-path }}"
           --server-python "${{ steps.server.outputs.python-path }}"

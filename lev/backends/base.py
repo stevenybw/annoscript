@@ -173,6 +173,8 @@ class HTTPBackend:
         except httpx.RequestError:
             raise InferenceError("model transport failed", code="transport_error") from None
         metadata = {"http_status": response.status_code}
+        if "Retry-After" in response.headers:
+            metadata["retry_after"] = response.headers["Retry-After"]
         if response.status_code in (401, 403):
             raise BackendFatalError("backend authentication failed", code="authentication_failed", metadata=metadata)
         if response.status_code >= 400:

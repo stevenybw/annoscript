@@ -1,8 +1,9 @@
 # Lev IR HTTP 协议 v1
 
-本文定义 `lev.remote.RemoteLevClient` 与未来执行服务的接口。本仓库当前提供客户端和
-离线测试服务替身，没有可部署的正式 HTTP 执行服务。测试替身只绑定本机回环地址，
-仅用于 Python 3.10 → Python 3.12 的跨进程验收。
+本文保留 `lev.remote.RemoteLevClient` 的历史 NDJSON 协议，兼容客户端及离线测试替身。
+新入口 `LevClient.remote()` 使用[持久化任务协议](job_protocol.md)，通过短 HTTP 请求获取结果；
+当前任务 API 不实现本文的流式路由，也不会在两种协议间自动回退。
+本文的测试替身只绑定本机回环地址，仅用于 Python 3.10 → Python 3.12 的跨进程验收。
 
 ## 执行边界
 
