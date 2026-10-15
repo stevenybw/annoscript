@@ -26,7 +26,7 @@ from types import FunctionType
 from typing import Callable
 
 from lev import ir
-from lev.client import JSONValue, LevClient, precondition, system_prompt
+from lev._client_common import JSONValue, get_program_config, precondition, system_prompt
 from lev.lev import Lev, constrain
 
 
@@ -676,7 +676,7 @@ class _Compiler:
         body, falls, _ = self.block(parsed.node.body, frame)
         if falls:
             body += (self.stmt(ir.Return, frame, parsed.node, ir.Literal(None)),)
-        config = LevClient._get_program_config(self.entry)
+        config = get_program_config(self.entry)
         program = ir.Program(
             self.entry.__qualname__, ir.ProgramConfig(**config), body, self.span(frame, parsed.node)
         )

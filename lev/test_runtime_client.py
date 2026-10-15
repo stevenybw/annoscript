@@ -58,7 +58,7 @@ class ClientTests(unittest.TestCase):
             seen.append(state)
             if state == "bad":
                 raise RuntimeError("checker defect")
-        with self.client() as client, patch("lev.client._PRECONDITIONS", {echo: (broken,)}):
+        with self.client() as client, patch("lev._client_common._PRECONDITIONS", {echo: (broken,)}):
             with self.assertRaisesRegex(RuntimeError, "checker defect"):
                 client.submit(echo, ["first", "bad"])
             self.assertIsNone(client._thread)
