@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import hashlib
 import random
 import threading
 import time
@@ -178,6 +179,18 @@ class LevJobClient:
 
     def lookup(self, idempotency_key, **options):
         return self._status(self._request("GET", "/v1/jobs:lookup", key=idempotency_key, **options))
+
+    def release(self, release_id):
+        """Read an immutable release without importing server implementation."""
+        if not nonempty(release_id):
+            raise ValueError("release_id must be nonempty")
+        response = self._request("GET", f"/v1/releases/{quote(release_id, safe='')}")
+        if (set(response) != {"protocol_version", "release_id", "manifest", "available"}
+                or response["release_id"] != release_id or type(response["available"]) is not bool
+                or type(response["manifest"]) is not dict
+                or hashlib.sha256(encode(response["manifest"], canonical=True)).hexdigest() != release_id):
+            raise RemoteProtocolError("invalid release manifest or digest")
+        return response
 
     def status(self, job):
         jid = job_id(job)
