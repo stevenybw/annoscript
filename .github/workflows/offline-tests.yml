@@ -76,3 +76,7 @@ jobs:
           "${{ steps.server.outputs.python-path }}" -m lev.job_cross_version_tests
           --client-python "${{ steps.client.outputs.python-path }}"
           --server-python "${{ steps.server.outputs.python-path }}"
+      - run: >-
+          "${{ steps.server.outputs.python-path }}" -m lev.evaluation_cross_version_tests
+          --client-python "${{ steps.client.outputs.python-path }}"
+          --server-python "${{ steps.server.outputs.python-path }}"

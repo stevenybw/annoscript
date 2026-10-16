@@ -157,6 +157,25 @@ class HTTPBackend:
         self._client = None
 
     async def post(self, url, payload):
+        meter = getattr(self, "_request_meter", None)
+        if meter is None:
+            return await self._post(url, payload)
+        identity = await meter.start(len(payload["questions"]) if "questions" in payload else 1)
+        timing, metadata = {}, {}
+        try:
+            data, metadata = await self._post(url, payload, _timing=timing)
+            return data, metadata
+        except InferenceError as exc:
+            metadata = exc.metadata
+            raise
+        finally:
+            # Timing covers the HTTP await, not lazy client construction, JSON
+            # parsing or metric persistence. No finished metric is invented if
+            # execution never reached the transport boundary.
+            if "seconds" in timing:
+                await meter.finish(identity, timing["seconds"], metadata.get("http_status", timing.get("http_status")), metadata.get("usage"))
+
+    async def _post(self, url, payload, *, _timing=None):
         import asyncio
         import httpx
         if self._client is None:
@@ -164,8 +183,15 @@ class HTTPBackend:
             self._client = httpx.AsyncClient(headers={"Authorization": auth},
                 timeout=self.timeout, transport=self._transport or httpx.AsyncHTTPTransport(retries=0))
         try:
-            async with asyncio.timeout(self.timeout):
-                response = await self._client.post(url, json=payload)
+            started = self._request_meter.clock() if _timing is not None else None
+            try:
+                async with asyncio.timeout(self.timeout):
+                    response = await self._client.post(url, json=payload)
+                if _timing is not None:
+                    _timing["http_status"] = response.status_code
+            finally:
+                if _timing is not None:
+                    _timing["seconds"] = max(0.0, self._request_meter.clock() - started)
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
             raise BackendFatalError("backend connection failed", code="backend_unavailable") from None
         except (TimeoutError, httpx.TimeoutException):
@@ -175,22 +201,25 @@ class HTTPBackend:
         metadata = {"http_status": response.status_code}
         if "Retry-After" in response.headers:
             metadata["retry_after"] = response.headers["Retry-After"]
-        if response.status_code in (401, 403):
-            raise BackendFatalError("backend authentication failed", code="authentication_failed", metadata=metadata)
-        if response.status_code >= 400:
-            raise InferenceError(f"model HTTP error {response.status_code}", code="model_http_error", metadata=metadata)
         try:
             data = json.loads(response.content, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
             if type(data) is not dict:
-                raise ValueError()
+                data = None
         except (ValueError, UnicodeError):
-            raise InferenceError("backend returned invalid JSON", code="invalid_response", metadata=metadata) from None
-        # Keep only numerical usage: no raw provider body, prompts or reasoning in traces.
+            data = None
+        # Numerical usage only: no provider body, prompts or reasoning text.
         def usage(value):
             if type(value) is dict:
                 return {k: usage(v) for k, v in value.items() if type(v) in (dict, int, float)}
             return value if type(value) is int or math.isfinite(value) else None
-        metadata["usage"] = usage(data.get("usage", {})) if type(data.get("usage", {})) is dict else {}
+        if data is not None and (response.status_code < 400 or type(data.get("usage")) is dict):
+            metadata["usage"] = usage(data.get("usage", {})) if type(data.get("usage")) is dict else {}
+        if response.status_code in (401, 403):
+            raise BackendFatalError("backend authentication failed", code="authentication_failed", metadata=metadata)
+        if response.status_code >= 400:
+            raise InferenceError(f"model HTTP error {response.status_code}", code="model_http_error", metadata=metadata)
+        if data is None:
+            raise InferenceError("backend returned invalid JSON", code="invalid_response", metadata=metadata)
         return data, metadata
 
     async def aclose(self):

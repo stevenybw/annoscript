@@ -102,6 +102,10 @@ def create_app(store, releases, tokens):
             raise ServiceError("invalid_limit", "invalid page limit") from None
         return store.results(identity, job_id, request.query_params.get("cursor"), limit)
 
+    @app.get("/v1/jobs/{job_id}/metrics")
+    def metrics(job_id: str, identity=Depends(principal)):
+        return store.metrics(identity, job_id)
+
     @app.post("/v1/jobs/{job_id}:resume")
     async def resume(job_id: str, request: Request, identity=Depends(principal)):
         idem = key(request)

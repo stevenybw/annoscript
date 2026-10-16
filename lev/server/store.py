@@ -1,12 +1,14 @@
 """Transactional job journal. All model work happens outside these transactions."""
 
 from contextlib import contextmanager
+from pathlib import Path
 import sqlite3
 import time
 import uuid
 
 from lev.job_protocol import (TERMINAL, cursor_for, cursor_seq, decode, encode,
                               request_sha256, validate_request)
+from lev.server.metrics import MetricStore, UPGRADE
 
 
 class ServiceError(Exception):
@@ -15,7 +17,7 @@ class ServiceError(Exception):
         self.code, self.status = code, status
 
 
-SCHEMA = """
+SCHEMA_V1 = """
 CREATE TABLE releases (id TEXT PRIMARY KEY, manifest BLOB NOT NULL);
 CREATE TABLE sessions (
  id TEXT PRIMARY KEY, principal TEXT NOT NULL, idem_key TEXT NOT NULL,
@@ -56,10 +58,17 @@ PRAGMA user_version=1;
 """
 
 
-class Store:
+SCHEMA = SCHEMA_V1 + UPGRADE
+
+
+class Store(MetricStore):
     def __init__(self, path, *, clock=time.time, session_ttl=300.0, lease_seconds=60.0,
-                 retention_seconds=7 * 86400):
-        self.path, self.clock = str(path), clock
+                 retention_seconds=7 * 86400, monotonic=time.monotonic):
+        self.path, self.clock, self.monotonic = str(path), clock, monotonic
+        try:
+            self.clock_epoch = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+        except OSError:
+            self.clock_epoch = None
         self.session_ttl, self.lease_seconds, self.retention_seconds = session_ttl, lease_seconds, retention_seconds
         with self._connection() as db:
             db.execute("PRAGMA journal_mode=WAL")
@@ -72,7 +81,7 @@ class Store:
                 for statement in SCHEMA.split(";"):
                     if statement.strip():
                         db.execute(statement)
-            elif version != 1:
+            elif version != 2:
                 raise RuntimeError(f"unsupported job database schema {version}")
             db.commit()
 
@@ -183,10 +192,12 @@ class Store:
             db.execute("INSERT OR IGNORE INTO releases VALUES (?,?)", (release_id, encode(manifest, canonical=True)))
             job_id, now = uuid.uuid4().hex, self.clock()
             db.execute("""INSERT INTO jobs
-                (id,principal,idem_key,request_hash,request,ir,digest,mode,release_id,session_id,state,indices,created,updated)
-                VALUES (?,?,?,?,?,?,?,?,?,?,'queued',?,?,?)""",
+                (id,principal,idem_key,request_hash,request,ir,digest,mode,release_id,session_id,state,indices,created,updated,metrics_available)
+                VALUES (?,?,?,?,?,?,?,?,?,?,'queued',?,?,?,1)""",
                 (job_id, principal, idem_key, fingerprint, encode(request), encode(request["ir"]), request["ir_sha256"],
                  request["mode"], release_id, session_id, encode([v["index"] for v in request["inputs"]]), now, now))
+            db.execute("UPDATE jobs SET queued_monotonic=?,clock_epoch=? WHERE id=?",
+                       (self.monotonic(), self.clock_epoch, job_id))
             db.executemany("INSERT INTO inputs(job_id,idx,state) VALUES (?,?,?)",
                            [(job_id, item["index"], encode(item["state"])) for item in request["inputs"]])
             return self._status(db, self._job(db, job_id))
@@ -306,7 +317,7 @@ class Store:
                 self._pause(db, job["id"], error)
         for row in db.execute("SELECT id FROM jobs WHERE expired=0 AND terminal_at<=?", (now - self.retention_seconds,)).fetchall():
             job_id = row["id"]
-            for table in ("results", "attempts", "inputs", "resume_ops"):
+            for table in ("http_requests", "results", "attempts", "inputs", "resume_ops"):
                 db.execute(f"DELETE FROM {table} WHERE job_id=?", (job_id,))
             db.execute("UPDATE jobs SET expired=1,request=NULL,ir=NULL,indices=NULL,pause_reason=NULL WHERE id=?", (job_id,))
 
@@ -324,6 +335,10 @@ class Store:
                               token=?,lease_until=? WHERE job_id=? AND idx=?""", (number, token, now + self.lease_seconds, job["id"], item["idx"]))
                 db.execute("INSERT INTO attempts(job_id,idx,number,token,worker,status,started) VALUES (?,?,?,?,?,'running',?)",
                            (job["id"], item["idx"], number, token, worker_id, now))
+                if number == 1 and self.clock_epoch is not None and self.clock_epoch == job["clock_epoch"]:
+                    wait = self.monotonic() - job["queued_monotonic"]
+                    db.execute("UPDATE attempts SET queue_wait_seconds=? WHERE job_id=? AND idx=? AND number=?",
+                               (wait if wait >= 0 else None, job["id"], item["idx"], number))
                 db.execute("UPDATE jobs SET state='running',updated=? WHERE id=?", (now, job["id"]))
                 return {"job_id": job["id"], "index": item["idx"], "state": decode(item["state"]),
                         "token": token, "attempt": number, "round_attempt": item["round_attempts"] + 1,
@@ -345,7 +360,7 @@ class Store:
             db.execute("UPDATE inputs SET lease_until=? WHERE job_id=? AND idx=?", (self.clock() + self.lease_seconds, claim["job_id"], claim["index"]))
             return True
 
-    def finish(self, claim, result):
+    def finish(self, claim, result, *, elapsed_seconds=None):
         if result.index != claim["index"]:
             raise ValueError("attempt result index mismatch")
         with self._tx() as db:
@@ -353,6 +368,7 @@ class Store:
             if owned is None:
                 return False
             job, item = owned
+            self._attempt_duration(db, claim, elapsed_seconds)
             error = None if result.error is None else {"code": result.error.code, "message": result.error.message}
             self._write_result(db, job["id"], item, result.status, result.value, error)
             db.execute("UPDATE attempts SET status='finished',finished=?,error=? WHERE job_id=? AND idx=? AND number=?",
@@ -361,12 +377,13 @@ class Store:
                 db.execute("UPDATE jobs SET state='completed',pause_reason=NULL,terminal_at=?,updated=? WHERE id=?", (self.clock(), self.clock(), job["id"]))
             return True
 
-    def attempt_failed(self, claim, error, *, pause=False, delay=0.0, metadata=None):
+    def attempt_failed(self, claim, error, *, pause=False, delay=0.0, metadata=None, elapsed_seconds=None):
         with self._tx() as db:
             owned = self._owned(db, claim)
             if owned is None:
                 return False
             job, item = owned
+            self._attempt_duration(db, claim, elapsed_seconds)
             db.execute("UPDATE attempts SET status='failed',finished=?,error=?,metadata=? WHERE job_id=? AND idx=? AND number=?",
                        (self.clock(), encode(error), encode(metadata or {}), job["id"], item["idx"], item["total_attempts"]))
             db.execute("UPDATE inputs SET status='pending',lease_until=NULL,next_attempt=? WHERE job_id=? AND idx=?",
@@ -375,10 +392,11 @@ class Store:
                 self._pause(db, job["id"], error)
             return True
 
-    def fail_job(self, claim, error):
+    def fail_job(self, claim, error, *, elapsed_seconds=None):
         with self._tx() as db:
             owned = self._owned(db, claim)
             if owned is None:
                 return False
+            self._attempt_duration(db, claim, elapsed_seconds)
             self._terminate(db, owned[0], "failed", error)
             return True

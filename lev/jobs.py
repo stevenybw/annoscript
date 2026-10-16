@@ -205,6 +205,14 @@ class LevJobClient:
         self._binding(job, page["job"])
         return page
 
+    def metrics(self, job):
+        """Read a consistent metric snapshot without loading server modules."""
+        from lev.metrics import validate_metrics
+        jid = job_id(job)
+        value = validate_metrics(self._request("GET", f"/v1/jobs/{quote(jid, safe='')}/metrics"), jid)
+        self._binding(job, value["job"])
+        return value
+
     def resume(self, job, *, pause_generation, idempotency_key):
         jid = job_id(job)
         return self._binding(job, self._status(self._request("POST", f"/v1/jobs/{quote(jid, safe='')}:resume",
