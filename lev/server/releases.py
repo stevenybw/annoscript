@@ -9,9 +9,10 @@ from urllib.parse import urlsplit
 
 from lev.job_protocol import decode, encode
 from lev._backend_profiles import validate_generation_profile
+from lev.backends.base import LLM_BATCH_DEFAULTS, validate_batch_options
 
 RUNTIME = {"max_active_runs": 1, "max_decision_inflight": 4, "max_llm_inflight": 4,
-           "max_batch_questions": 32, "loop_window": 32, "local_task_budget": 1024}
+           "max_batch_questions": 32, "loop_window": 32, "local_task_budget": 1024, **LLM_BATCH_DEFAULTS}
 POLICY = {"max_attempts": 3, "input_timeout": 300.0, "model_timeout": 60.0,
           "max_inputs": 500, "max_request_bytes": 32 * 1024 * 1024}
 
@@ -45,7 +46,8 @@ def manifest(config):
         if name == "generation":
             models[name]["profile"] = validate_generation_profile(model.get("profile", "legacy"))
     runtime, policy = {**RUNTIME, **config.get("runtime", {})}, {**POLICY, **config.get("policy", {})}
-    if (set(runtime) != set(RUNTIME) or any(type(v) is not int or v < 1 for v in runtime.values())
+    validate_batch_options({k: runtime[k] for k in LLM_BATCH_DEFAULTS})
+    if (set(runtime) != set(RUNTIME) or any(type(v) is not int or v < 1 for k, v in runtime.items() if k != "llm_batch_repair_attempts")
             or runtime["max_active_runs"] != 1 or set(policy) != set(POLICY)
             or any(type(v) not in (int, float) or not 0 < v < float("inf") for v in policy.values())
             or any(type(policy[k]) is not int for k in ("max_attempts", "max_inputs", "max_request_bytes"))):

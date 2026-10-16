@@ -13,6 +13,13 @@ from lev.lev import (Lev, NoulResponse, ChoiceResponse, ScoreResponse,
 
 DECISION_OPERATIONS = frozenset(("noul", "choice", "score"))
 LLM_OPERATIONS = frozenset(("extract", "generate", "generate_list"))
+LLM_BATCH_DEFAULTS = {
+    "max_llm_batch_calls": 8,
+    "max_llm_batch_input_bytes": 262144,
+    "max_llm_batch_output_tokens": 16384,
+    "llm_batch_default_tokens": 1024,
+    "llm_batch_repair_attempts": 1,
+}
 RESPONSE_TYPES = dict(zip(
     ("noul", "choice", "score", "extract", "generate", "generate_list"),
     (NoulResponse, ChoiceResponse, ScoreResponse, ExtractResponse, GenerateResponse, GenerateListResponse),
@@ -63,6 +70,26 @@ class InferenceOutput:
 class BatchResult:
     responses: Mapping[str, object]
     metadata: dict = field(default_factory=dict)
+    errors: Mapping[str, InferenceError] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class LLMBatchPlan:
+    calls: tuple
+    max_tokens: int
+    input_bytes: int
+
+
+def encode_payload(payload):
+    """The exact JSON encoding used at the HTTP boundary and by batch planning."""
+    return json.dumps(payload, ensure_ascii=False, allow_nan=False,
+                      separators=(",", ":")).encode("utf-8")
+
+
+def validate_batch_options(options):
+    for name, value in options.items():
+        if type(value) is not int or (value not in (0, 1) if name == "llm_batch_repair_attempts" else value < 1):
+            raise ValueError(f"invalid {name}")
 
 
 def normalize_call(call_id, operation, args, kwargs, context):
@@ -156,11 +183,12 @@ class HTTPBackend:
         self._token, self.timeout, self._transport = auth_token, timeout, transport
         self._client = None
 
-    async def post(self, url, payload):
+    async def post(self, url, payload, *, logical_calls=None):
         meter = getattr(self, "_request_meter", None)
         if meter is None:
             return await self._post(url, payload)
-        identity = await meter.start(len(payload["questions"]) if "questions" in payload else 1)
+        identity = await meter.start(logical_calls if logical_calls is not None else
+                                     len(payload["questions"]) if "questions" in payload else 1)
         timing, metadata = {}, {}
         try:
             data, metadata = await self._post(url, payload, _timing=timing)
@@ -186,7 +214,8 @@ class HTTPBackend:
             started = self._request_meter.clock() if _timing is not None else None
             try:
                 async with asyncio.timeout(self.timeout):
-                    response = await self._client.post(url, json=payload)
+                    response = await self._client.post(url, content=encode_payload(payload),
+                                                       headers={"Content-Type": "application/json"})
                 if _timing is not None:
                     _timing["http_status"] = response.status_code
             finally:

@@ -15,7 +15,8 @@ from lev import plan as p
 from lev._data import snapshot
 from lev._expressions import expression, unpack
 from lev.backends.base import (InferenceContext, normalize_call, validate_response,
-                               DECISION_OPERATIONS, BackendFatalError, InferenceError)
+                               DECISION_OPERATIONS, BackendFatalError, InferenceError,
+                               LLM_BATCH_DEFAULTS, validate_batch_options)
 from lev.client import Result, ResultError
 
 
@@ -50,6 +51,9 @@ class _Request:
     waiters: list
     status: str = "queued"
     response: object = None
+    repair_attempt: int = 0
+    repair_parent: str | None = None
+    repair_feedback: str | None = None
 
 
 class AsyncResultStream:
@@ -366,12 +370,19 @@ class _Run:
 class LevRuntime:
     def __init__(self, decision_backend, llm_backend, *, max_active_runs=8,
                  max_decision_inflight=4, max_llm_inflight=4, max_batch_questions=32,
-                 loop_window=32, local_task_budget=1024, trace=False):
+                 loop_window=32, local_task_budget=1024, trace=False,
+                 max_llm_batch_calls=8, max_llm_batch_input_bytes=262144,
+                 max_llm_batch_output_tokens=16384, llm_batch_default_tokens=1024,
+                 llm_batch_repair_attempts=1):
         for name, value in (("max_active_runs", max_active_runs), ("max_decision_inflight", max_decision_inflight),
                             ("max_llm_inflight", max_llm_inflight), ("max_batch_questions", max_batch_questions),
                             ("loop_window", loop_window), ("local_task_budget", local_task_budget)):
             if type(value) is not int or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
+            setattr(self, name, value)
+        batch_options = {name: value for name, value in locals().copy().items() if name in LLM_BATCH_DEFAULTS}
+        validate_batch_options(batch_options)
+        for name, value in batch_options.items():
             setattr(self, name, value)
         self.decision_backend, self.llm_backend = decision_backend, llm_backend
         self.trace = [] if trace else None
@@ -480,14 +491,28 @@ class LevRuntime:
                     self._record("run_started", run, entry=stream.plan.entry)
             available = [s for s in available if s.pending]
 
-    def _send(self, run, requests, kind):
+    def _send(self, run, requests, kind, batch_plan=None):
         calls = [r.call for r in requests]
         for request in requests:
             request.status = "inflight"
         batch_id = self._id("http")
         backend = self.decision_backend if kind == "decision" else self.llm_backend
-        self._record("http_submitted", run, batch=batch_id, backend=kind, model=getattr(backend, "model", None), calls=[c.id for c in calls], questions=len(calls))
-        coroutine = self.decision_backend.infer_batch(run.context, calls) if kind == "decision" else self.llm_backend.infer(run.context, calls[0])
+        details = {}
+        if batch_plan is not None:
+            details = {"input_bytes": batch_plan.input_bytes, "max_tokens": batch_plan.max_tokens}
+        if requests[0].repair_attempt:
+            details.update(repair_attempt=requests[0].repair_attempt, repair_parent=requests[0].repair_parent)
+        self._record("http_submitted", run, batch=batch_id, backend=kind, model=getattr(backend, "model", None),
+                     calls=[c.id for c in calls], questions=len(calls), **details)
+        if kind == "decision":
+            coroutine = backend.infer_batch(run.context, calls)
+        elif batch_plan is not None:
+            coroutine = backend.infer_batch(run.context, calls, max_tokens=batch_plan.max_tokens)
+        elif requests[0].repair_attempt:
+            coroutine = backend.infer(run.context, calls[0], repair_feedback=requests[0].repair_feedback,
+                max_tokens_override=calls[0].arguments.get("max_num_tokens") or self.llm_batch_default_tokens)
+        else:
+            coroutine = backend.infer(run.context, calls[0])
         future = asyncio.create_task(coroutine)
         self._inflight[future] = run, requests, kind, batch_id
         future.add_done_callback(self._completed)
@@ -495,6 +520,27 @@ class LevRuntime:
     def _completed(self, future):
         self._events.append(future)
         self._wake.set()
+
+    def _repair_batch(self, run, requests, errors, batch):
+        """Only batch content failures get one separately scheduled single-call repair."""
+        for request in requests:
+            error = errors.get(request.call.id)
+            if error is not None and (isinstance(error, BackendFatalError)
+                    or error.code not in ("invalid_response", "invalid_batch_output", "incomplete_batch_generation")
+                    or request.repair_attempt >= self.llm_batch_repair_attempts):
+                self._fail_run(run, error, request.waiters[0])
+                return False
+        for request in requests:
+            if request.call.id not in errors:
+                continue
+            request.repair_attempt += 1
+            request.repair_parent = batch
+            request.repair_feedback = (
+                "The answer was missing, truncated, or violated the required format or task constraints. "
+                "Check character and item limits and the exact extraction source"
+            )
+            request.status = "queued"
+        return True
 
     def _receive(self):
         while self._events:
@@ -504,22 +550,42 @@ class LevRuntime:
             try:
                 output = future.result()
                 metadata = output.metadata
-                responses = output.responses if kind == "decision" else {requests[0].call.id: output.response}
-                if set(responses) != {r.call.id for r in requests}:
-                    raise InferenceError("backend returned incorrect call IDs", code="invalid_response")
+                is_batch = kind == "decision" or len(requests) > 1
+                responses = output.responses if is_batch else {requests[0].call.id: output.response}
+                errors = dict(getattr(output, "errors", {})) if is_batch else {}
+                if (set(responses) & set(errors) or set(responses) | set(errors) != {r.call.id for r in requests}
+                        or any(not isinstance(error, InferenceError) for error in errors.values())
+                        or (kind == "decision" and errors)):
+                    raise InferenceError("backend returned incorrect call IDs",
+                        code="invalid_batch_output" if kind == "llm" and is_batch else "invalid_response")
                 for request in requests:
-                    validate_response(request.call, responses[request.call.id])
+                    if request.call.id in responses:
+                        try:
+                            validate_response(request.call, responses[request.call.id])
+                        except InferenceError as exc:
+                            if kind != "llm" or len(requests) < 2:
+                                raise
+                            errors[request.call.id] = exc
             except asyncio.CancelledError:
                 self._record("http_cancelled", run, batch=batch, backend=kind)
             except Exception as exc:
                 self._record("http_failed", run, batch=batch, backend=kind, **(getattr(exc, "metadata", {}) or metadata))
+                if (not run.done and kind == "llm" and len(requests) > 1
+                        and getattr(exc, "code", None) in ("invalid_batch_output", "incomplete_batch_generation")):
+                    self._repair_batch(run, requests, {r.call.id: exc for r in requests}, batch)
+                    continue
                 failed = next((r for r in requests if r.call.id == getattr(exc, "call_id", None)), requests[0])
                 self._fail_run(run, exc, failed.waiters[0])
             else:
-                self._record("http_completed", run, batch=batch, backend=kind, **metadata)
+                self._record("http_completed", run, batch=batch, backend=kind,
+                             **({"failed_calls": list(errors)} if errors else {}), **metadata)
                 if run.done:
                     continue
+                if errors and not self._repair_batch(run, requests, errors, batch):
+                    continue
                 for request in requests:
+                    if request.call.id in errors:
+                        continue
                     request.status = "done"
                     request.response = responses[request.call.id]
                     for inst in request.waiters:
@@ -536,7 +602,25 @@ class LevRuntime:
                 for kind, limit in (("decision", self.max_decision_inflight), ("llm", self.max_llm_inflight)):
                     eligible = [r for r in queued if (r.call.operation in DECISION_OPERATIONS) == (kind == "decision") and r.status == "queued"]
                     if eligible and counts[kind] < limit:
-                        self._send(run, eligible[:self.max_batch_questions if kind == "decision" else 1], kind)
+                        plan = None
+                        if kind == "decision":
+                            selected = eligible[:self.max_batch_questions]
+                        else:
+                            repairs = [r for r in eligible if r.repair_attempt]
+                            if not repairs and any(r.status == "queued" and r.repair_attempt
+                                    for other in self._runs.values() for r in other.cache.values()):
+                                continue
+                            selected = (repairs or eligible)[:1]
+                            if (not repairs and self.max_llm_batch_calls > 1
+                                    and getattr(self.llm_backend, "supports_llm_batch", False) is True):
+                                plan = self.llm_backend.plan_batch(run.context, [r.call for r in eligible],
+                                    max_calls=self.max_llm_batch_calls, max_input_bytes=self.max_llm_batch_input_bytes,
+                                    max_output_tokens=self.max_llm_batch_output_tokens, default_tokens=self.llm_batch_default_tokens)
+                                if plan is not None:
+                                    selected = eligible[:len(plan.calls)]
+                                    if tuple(r.call for r in selected) != plan.calls or len(selected) < 2:
+                                        raise ValueError("backend selected an invalid batch prefix")
+                        self._send(run, selected, kind, plan)
                         self._runs.pop(run.id)
                         self._runs[run.id] = run
                         counts[kind] += 1

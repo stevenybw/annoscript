@@ -11,3 +11,14 @@ string ::= "\"" character* "\""
 character ::= [^"\\\x00-\x1f] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
 hex ::= [0-9a-fA-F]
 '''.strip()
+
+
+BATCH_GRAMMAR = r'''
+root ::= "{\"answers\":{" (answer ("," answer)*)? "}}"
+answer ::= string ":" (text-answer | list-answer)
+text-answer ::= "{\"type\":\"generate\",\"text\":" string "}"
+list-answer ::= "{\"type\":" ("\"generate_list\"" | "\"extract\"") ",\"items\":[" (string ("," string)*)? "]}"
+string ::= "\"" character* "\""
+character ::= [^"\\\x00-\x1f] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
+hex ::= [0-9a-fA-F]
+'''.strip()

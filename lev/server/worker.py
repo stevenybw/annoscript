@@ -37,20 +37,27 @@ class ObservedBackend:
     def __init__(self, backend, failures, owned):
         self.backend, self.failures, self.owned = backend, failures, owned
 
-    async def infer(self, *args):
+    @property
+    def supports_llm_batch(self):
+        return getattr(self.backend, "supports_llm_batch", False) is True
+
+    def plan_batch(self, *args, **kwargs):
+        return self.backend.plan_batch(*args, **kwargs)
+
+    async def infer(self, *args, **kwargs):
         if not self.owned():
             raise asyncio.CancelledError()
         try:
-            return await self.backend.infer(*args)
+            return await self.backend.infer(*args, **kwargs)
         except Exception as exc:
             self.failures.append(exc)
             raise
 
-    async def infer_batch(self, *args):
+    async def infer_batch(self, *args, **kwargs):
         if not self.owned():
             raise asyncio.CancelledError()
         try:
-            return await self.backend.infer_batch(*args)
+            return await self.backend.infer_batch(*args, **kwargs)
         except Exception as exc:
             self.failures.append(exc)
             raise

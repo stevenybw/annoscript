@@ -162,10 +162,13 @@ class Lev(ABC):
         Python's ``len``. Set ``min_length=1`` to require nonempty text.
         ``max_length=None`` means no upper length bound.
 
-        ``max_num_tokens`` is a separate generation budget in the model's tokens;
-        it does not replace or relax the character bounds. ``None`` uses the
-        model's default budget. Exhausting the budget must not silently turn an
-        incomplete generation into a successful response.
+        ``max_num_tokens`` is an independent output limit for a standalone
+        generation. When Runtime batches ready calls, it contributes to a shared
+        budget and is not an enforced per-answer token limit. ``None`` uses the
+        model's default for standalone calls and Runtime's default contribution
+        for batches or repairs. Character bounds are always checked per answer.
+        Exhausting the budget must not silently turn an incomplete generation
+        into a successful response.
 
         Implementations must raise ``ValueError`` for negative length bounds,
         an inverted length range, or a nonpositive ``max_num_tokens``. If valid
@@ -201,9 +204,11 @@ class Lev(ABC):
         ``None`` for either upper bound means no upper limit.
 
         ``max_num_tokens`` is a generation budget for the entire list,
-        including any output formatting, in the model's tokens. It does not
-        replace or relax the item count or character bounds. ``None`` uses
-        the model's default budget. Exhausting the budget must not silently
+        including formatting, in the model's tokens. In a Runtime batch it
+        contributes to a shared budget, without an independent per-list token
+        limit. ``None`` uses the model's default for standalone calls and
+        Runtime's default contribution for batches or repairs. Item count and
+        character bounds remain strict. Exhausting the budget must not silently
         turn an incomplete list or item into a successful response.
 
         Implementations must raise ``ValueError`` for negative item or length
