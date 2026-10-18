@@ -13,7 +13,7 @@ from lev.test_runtime import FakeBackend, mixed
 
 
 def echo(lev):
-    return lev.generate(lev.state).text
+    return lev.generate(lev.state, max_length=512).text
 
 
 def constant(lev):
@@ -26,7 +26,7 @@ def check(state):
 
 @precondition(check)
 def checked(lev):
-    return lev.generate(lev.state).text
+    return lev.generate(lev.state, max_length=512).text
 
 
 class ClientTests(unittest.TestCase):

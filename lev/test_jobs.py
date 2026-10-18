@@ -20,7 +20,7 @@ from lev.jobs import (LevJobClient, RemoteCancellationError, RemoteJobPausedErro
 
 
 def generate(lev):
-    return lev.generate(lev.state).text
+    return lev.generate(lev.state, max_length=512).text
 
 
 def check(state):
@@ -29,7 +29,7 @@ def check(state):
 
 @precondition(check)
 def checked(lev):
-    return lev.generate(lev.state).text
+    return lev.generate(lev.state, max_length=512).text
 
 
 class Clock:

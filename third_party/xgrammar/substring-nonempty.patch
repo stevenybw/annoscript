@@ -1,0 +1,293 @@
+diff --git a/cpp/grammar_builder.cc b/cpp/grammar_builder.cc
+index 32da7a1..93ea863 100644
+--- a/cpp/grammar_builder.cc
++++ b/cpp/grammar_builder.cc
+@@ -93,8 +93,15 @@ int32_t GrammarBuilder::AddRegex(const std::string& regex_str, bool json_string)
+   return AddGrammarExpr({GrammarExprType::kRegex, data.data(), static_cast<int32_t>(data.size())});
+ }
+ 
+-int32_t GrammarBuilder::AddSubstring(const std::vector<std::string>& chunks) {
++int32_t GrammarBuilder::AddSubstring(const std::vector<std::string>& chunks, bool allow_empty, int32_t max_chunks) {
+   std::vector<int32_t> data;
++  // Optional negative sentinel preserves the existing nullable serialized layout.
++  // Chunk lengths are nonnegative, so the marker is unambiguous.
++  if (max_chunks >= 0) {
++    data.insert(data.end(), {-2, allow_empty ? 1 : 0, max_chunks});
++  } else if (!allow_empty) {
++    data.push_back(-1);
++  }
+   for (const std::string& chunk : chunks) {
+     data.push_back(static_cast<int32_t>(chunk.size()));
+     for (char c : chunk) {
+diff --git a/cpp/grammar_builder.h b/cpp/grammar_builder.h
+index 7209a56..5d1e990 100644
+--- a/cpp/grammar_builder.h
++++ b/cpp/grammar_builder.h
+@@ -99,7 +99,7 @@ class GrammarBuilder {
+    * compiled into an automaton by GrammarFSMBuilder.
+    * \param chunks The list of byte string chunks. Chunks may be empty or repeated.
+    */
+-  int32_t AddSubstring(const std::vector<std::string>& chunks);
++  int32_t AddSubstring(const std::vector<std::string>& chunks, bool allow_empty = true, int32_t max_chunks = -1);
+ 
+   /*!
+    * \brief Add a GrammarExpr for a character class.
+diff --git a/cpp/grammar_compiler.cc b/cpp/grammar_compiler.cc
+index beb4720..e61a110 100644
+--- a/cpp/grammar_compiler.cc
++++ b/cpp/grammar_compiler.cc
+@@ -816,11 +816,12 @@ AdaptiveTokenMask GrammarMatcherForTokenMaskCache::GetAdaptiveTokenMask(bool is_
+     lookahead_hash = GrammarFSMHasher::HashSequence(grammar_, lookahead_id);
+     const auto& original_to_new_id = grammar_->per_rule_fsm_new_state_ids[init_rule_id_];
+     fsm_hash = grammar_->per_rule_fsm_hashes[init_rule_id_].value();
+-    for (const auto& original_new_pair : original_to_new_id) {
+-      if (original_new_pair.first == initial_state_.element_id) {
+-        new_state_id = original_new_pair.second;
+-        break;
+-      }
++    auto found = std::lower_bound(
++        original_to_new_id.begin(), original_to_new_id.end(), initial_state_.element_id,
++        [](const auto& entry, int32_t state_id) { return entry.first < state_id; }
++    );
++    if (found != original_to_new_id.end() && found->first == initial_state_.element_id) {
++      new_state_id = found->second;
+     }
+     XGRAMMAR_DCHECK(new_state_id != -1);
+     const auto& fsm = grammar_->per_rule_fsms[init_rule_id_].value();
+diff --git a/cpp/grammar_functor.cc b/cpp/grammar_functor.cc
+index c139331..850b271 100644
+--- a/cpp/grammar_functor.cc
++++ b/cpp/grammar_functor.cc
+@@ -1182,8 +1182,9 @@ class AllowEmptyRuleAnalyzerImpl : public GrammarVisitor<std::vector<int32_t>> {
+       }
+ 
+       if (grammar_expr.type == GrammarExprType::kSubstring) {
+-        // A substring automaton always accepts the empty string: every state is accepting.
+-        empty_rule_id_set->insert(i);
++        if (base_grammar_->GetSubstringAllowEmpty(grammar_expr)) {
++          empty_rule_id_set->insert(i);
++        }
+         continue;
+       }
+ 
+@@ -1392,7 +1393,7 @@ class GrammarFSMBuilderImpl {
+       const std::string& regex, bool json_string, int start_state, std::vector<int32_t>* end_states
+   );
+   void BuildSubstring(
+-      const std::vector<std::string>& chunks, int start_state, std::vector<int32_t>* end_states
++      const std::vector<std::string>& chunks, bool allow_empty, int32_t max_chunks, int start_state, std::vector<int32_t>* end_states
+   );
+   void BuildTagDispatch(
+       const Grammar::Impl::TagDispatch& tag_dispatch,
+@@ -1637,7 +1638,7 @@ void GrammarFSMBuilderImpl::BuildExpression(
+           end_states
+       );
+     case ExprType::kSubstring:
+-      return BuildSubstring(grammar->GetSubstringChunks(expr), start_state, end_states);
++      return BuildSubstring(grammar->GetSubstringChunks(expr), grammar->GetSubstringAllowEmpty(expr), grammar->GetSubstringMaxChunks(expr), start_state, end_states);
+     case ExprType::kTagDispatch:
+       return BuildTagDispatch(grammar->GetTagDispatch(expr), start_state, end_states);
+     case ExprType::kTokenTagDispatch:
+@@ -1853,9 +1854,9 @@ void GrammarFSMBuilderImpl::BuildRegex(
+ }
+ 
+ void GrammarFSMBuilderImpl::BuildSubstring(
+-    const std::vector<std::string>& chunks, int start_state, std::vector<int32_t>* end_states
++    const std::vector<std::string>& chunks, bool allow_empty, int32_t max_chunks, int start_state, std::vector<int32_t>* end_states
+ ) {
+-  AppendFSM(SuffixAutomata::Build(chunks), start_state, end_states);
++  AppendFSM(SuffixAutomata::Build(chunks, allow_empty, max_chunks), start_state, end_states);
+ }
+ 
+ void GrammarFSMBuilderImpl::BuildTagDispatch(
+@@ -3326,6 +3327,9 @@ std::pair<bool, uint64_t> GrammarFSMHasherImpl::IsPartialHashable(int fsm_index)
+   for (const auto& [original_state_id, new_state_id] : original_state_id_to_new_id) {
+     new_id_mapping.emplace_back(original_state_id, new_state_id);
+   }
++  // State lookup during token-mask compilation must not scan this table per state.
++  // Sorting changes neither canonical state IDs nor the computed FSM hash.
++  std::sort(new_id_mapping.begin(), new_id_mapping.end());
+   grammar_->ImplPtr()->per_rule_fsm_new_state_ids[fsm_index] = new_id_mapping;
+   return {true, hash_result};
+ }
+@@ -3430,6 +3434,9 @@ uint64_t GrammarFSMHasherImpl::HashFsm(int fsm_index) {
+   for (const auto& [original_state_id, new_state_id] : original_state_id_to_new_id) {
+     new_id_mapping.emplace_back(original_state_id, new_state_id);
+   }
++  // State lookup during token-mask compilation must not scan this table per state.
++  // Sorting changes neither canonical state IDs nor the computed FSM hash.
++  std::sort(new_id_mapping.begin(), new_id_mapping.end());
+   grammar_->ImplPtr()->per_rule_fsm_new_state_ids[fsm_index] = new_id_mapping;
+   return hash_result;
+ }
+diff --git a/cpp/grammar_impl.h b/cpp/grammar_impl.h
+index 8da2153..d0c09e0 100644
+--- a/cpp/grammar_impl.h
++++ b/cpp/grammar_impl.h
+@@ -277,12 +277,21 @@ class Grammar::Impl {
+     return grammar_expr[0] != 0;
+   }
+ 
++  /*! \brief Nonempty Substring uses a negative sentinel before its chunks. */
++  bool GetSubstringAllowEmpty(const GrammarExpr& expr) const {
++    return expr.size() == 0 || (expr[0] == -2 ? expr[1] != 0 : expr[0] != -1);
++  }
++
++  int32_t GetSubstringMaxChunks(const GrammarExpr& expr) const {
++    return expr.size() > 0 && expr[0] == -2 ? expr[2] : -1;
++  }
++
+   /*! \brief Get the chunk list of the substring grammar expr. */
+   std::vector<std::string> GetSubstringChunks(const GrammarExpr& grammar_expr) const {
+     XGRAMMAR_DCHECK(grammar_expr.type == GrammarExprType::kSubstring)
+         << "GrammarExpr is not a substring";
+     std::vector<std::string> chunks;
+-    for (int i = 0; i < grammar_expr.size();) {
++    for (int i = GetSubstringMaxChunks(grammar_expr) >= 0 ? 3 : (GetSubstringAllowEmpty(grammar_expr) ? 0 : 1); i < grammar_expr.size();) {
+       int32_t chunk_len = grammar_expr[i++];
+       XGRAMMAR_DCHECK(chunk_len >= 0 && i + chunk_len <= grammar_expr.size())
+           << "Invalid substring chunk length";
+diff --git a/cpp/grammar_parser.cc b/cpp/grammar_parser.cc
+index 757e189..40ff74b 100644
+--- a/cpp/grammar_parser.cc
++++ b/cpp/grammar_parser.cc
+@@ -1331,8 +1331,22 @@ int32_t EBNFParser::ParseSubstringMacro() {
+   auto args = ParseMacroArguments();
+   auto delta_element = start - current_token_;
+ 
+-  if (!args.named_arguments.empty()) {
+-    ReportParseError("Substring() does not accept named arguments", delta_element);
++  bool allow_empty = true;
++  int32_t max_chunks = -1;
++  for (const auto& [name, value] : args.named_arguments) {
++    if (name == "allow_empty") {
++      auto node = std::get_if<MacroIR::BooleanNode>(value.get());
++      if (node == nullptr) ReportParseError("Substring() allow_empty must be a boolean", delta_element);
++      allow_empty = node->value;
++    } else if (name == "max_chunks") {
++      auto node = std::get_if<MacroIR::IntegerNode>(value.get());
++      if (node == nullptr || node->value < 0 || node->value > std::numeric_limits<int32_t>::max()) {
++        ReportParseError("Substring() max_chunks must be a nonnegative int32", delta_element);
++      }
++      max_chunks = static_cast<int32_t>(node->value);
++    } else {
++      ReportParseError("Substring() accepts only allow_empty and max_chunks named arguments", delta_element);
++    }
+   }
+ 
+   std::vector<std::string> chunks;
+@@ -1345,7 +1359,7 @@ int32_t EBNFParser::ParseSubstringMacro() {
+     chunks.push_back(string_node->value);
+   }
+ 
+-  return builder_.AddSubstring(chunks);
++  return builder_.AddSubstring(chunks, allow_empty, max_chunks);
+ }
+ 
+ int32_t EBNFParser::ParseTokenSet() {
+diff --git a/cpp/grammar_printer.cc b/cpp/grammar_printer.cc
+index a598dfb..0528153 100644
+--- a/cpp/grammar_printer.cc
++++ b/cpp/grammar_printer.cc
+@@ -227,6 +227,15 @@ std::string GrammarPrinter::PrintSubstring(const GrammarExpr& grammar_expr) {
+     }
+     result += escape_chunk(chunks[i]);
+   }
++  if (!grammar_->GetSubstringAllowEmpty(grammar_expr)) {
++    if (!chunks.empty()) result += ", ";
++    result += "allow_empty=false";
++  }
++  auto max_chunks = grammar_->GetSubstringMaxChunks(grammar_expr);
++  if (max_chunks >= 0) {
++    if (!chunks.empty() || !grammar_->GetSubstringAllowEmpty(grammar_expr)) result += ", ";
++    result += "max_chunks=" + std::to_string(max_chunks);
++  }
+   return result + ")";
+ }
+ 
+diff --git a/cpp/suffix_automata.cc b/cpp/suffix_automata.cc
+index a3b4c85..c680c69 100644
+--- a/cpp/suffix_automata.cc
++++ b/cpp/suffix_automata.cc
+@@ -12,7 +12,7 @@
+ 
+ namespace xgrammar {
+ 
+-FSMWithStartEnd SuffixAutomata::Build(const std::vector<std::string>& chunks) {
++FSMWithStartEnd SuffixAutomata::Build(const std::vector<std::string>& chunks, bool allow_empty, int32_t max_chunks) {
+   // Step 1. Build the suffix automaton over the chunk sequence with the standard online
+   // construction. Each chunk is treated as one symbol of the alphabet.
+   struct State {
+@@ -24,6 +24,9 @@ FSMWithStartEnd SuffixAutomata::Build(const std::vector<std::string>& chunks) {
+   std::vector<State> states(1);
+   int32_t last = 0;
+   for (const std::string& chunk : chunks) {
++    // Empty chunks do not change the byte-string language. Removing them prevents
++    // epsilon paths to accepting states when the empty string is forbidden.
++    if (!allow_empty && chunk.empty()) continue;
+     int32_t current = static_cast<int32_t>(states.size());
+     states.push_back({states[last].length + 1, -1, {}});
+ 
+@@ -57,6 +60,28 @@ FSMWithStartEnd SuffixAutomata::Build(const std::vector<std::string>& chunks) {
+     last = current;
+   }
+ 
++  // Count consumed chunks, not a suffix state's longest representative string.
++  // Only reachable product states are materialized; transitions still carry whole chunks.
++  if (max_chunks >= 0 && max_chunks < states[last].length) {
++    const auto original = std::move(states);
++    states = std::vector<State>(1);
++    std::vector<std::pair<int32_t, int32_t>> keys{{0, 0}};
++    std::map<std::pair<int32_t, int32_t>, int32_t> ids{{{0, 0}, 0}};
++    for (size_t i = 0; i < keys.size(); ++i) {
++      const auto [state, consumed] = keys[i];
++      if (consumed == max_chunks) continue;
++      for (const auto& [chunk, target] : original[state].transitions) {
++        const auto key = std::make_pair(target, consumed + 1);
++        auto [it, inserted] = ids.emplace(key, static_cast<int32_t>(keys.size()));
++        if (inserted) {
++          keys.push_back(key);
++          states.push_back({consumed + 1, -1, {}});
++        }
++        states[i].transitions.emplace(chunk, it->second);
++      }
++    }
++  }
++
+   // Step 2. Expand the chunk-level automaton into a byte-level FSM. Automaton state i maps to
+   // FSM state i; every automaton state is accepting. A chunk-labeled transition becomes a chain
+   // of byte transitions through fresh intermediate states; an empty chunk becomes an epsilon
+@@ -65,7 +90,7 @@ FSMWithStartEnd SuffixAutomata::Build(const std::vector<std::string>& chunks) {
+   std::vector<int32_t> end_states;
+   end_states.reserve(states.size());
+   for (int32_t index = 0; index < static_cast<int32_t>(states.size()); ++index) {
+-    end_states.push_back(index);
++    if (allow_empty || index != 0) end_states.push_back(index);
+   }
+   for (int32_t index = 0; index < static_cast<int32_t>(states.size()); ++index) {
+     for (const auto& [chunk, target] : states[index].transitions) {
+diff --git a/cpp/suffix_automata.h b/cpp/suffix_automata.h
+index d4d9dac..10f7eec 100644
+--- a/cpp/suffix_automata.h
++++ b/cpp/suffix_automata.h
+@@ -28,7 +28,7 @@ class SuffixAutomata {
+    * \param chunks The list of byte string chunks. Chunks may be empty or repeated.
+    * \return The FSM with start and end states.
+    */
+-  static FSMWithStartEnd Build(const std::vector<std::string>& chunks);
++  static FSMWithStartEnd Build(const std::vector<std::string>& chunks, bool allow_empty = true, int32_t max_chunks = -1);
+ };
+ 
+ }  // namespace xgrammar
+diff --git a/pyproject.toml b/pyproject.toml
+index 69e2aef..cf7bcad 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "xgrammar"
+-version = "0.2.5"
++version = "0.2.5+lev.substring2.2"
+ description = "Efficient, Flexible and Portable Structured Generation"
+ authors = [{ name = "MLC Team" }]
+ readme = "README.md"

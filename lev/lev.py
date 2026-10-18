@@ -119,8 +119,8 @@ class Lev(ABC):
         *,
         source: str | None = None,
         min_items: int = 0,
-        max_items: int | None = None,
-        max_length_per_item: int | None = None,
+        max_items: int,
+        max_length_per_item: int,
     ) -> ExtractResponse:
         """Extract verbatim passages using this instance's state and model.
 
@@ -132,8 +132,9 @@ class Lev(ABC):
         Each item must be a nonempty, contiguous substring of the source, without
         rewriting, normalization, or concatenation of separate passages. The
         number of items must satisfy the inclusive ``min_items`` / ``max_items``
-        bounds. ``max_length_per_item`` limits each item's Unicode code-point
-        length, as measured by Python's ``len``. ``None`` means no upper bound.
+        bounds. Required ``max_length_per_item`` is a suggested Unicode code-point
+        length, measured by Python's ``len``, and contributes to the token budget.
+        Exceeding the suggestion does not invalidate an otherwise valid item.
         Return an empty list when nothing matches and ``min_items`` is zero.
 
         Implementations must raise ``ValueError`` for a missing source with a
@@ -151,22 +152,22 @@ class Lev(ABC):
         instructions: str,
         *,
         min_length: int = 0,
-        max_length: int | None = None,
+        max_length: int,
         max_num_tokens: int | None = None,
     ) -> GenerateResponse:
         """Generate text using this instance's state and model.
 
         The result is always a string, never ``None``, and may paraphrase or
         synthesize the state as directed by ``instructions``. ``min_length`` and
-        ``max_length`` are inclusive Unicode code-point bounds, measured by
-        Python's ``len``. Set ``min_length=1`` to require nonempty text.
-        ``max_length=None`` means no upper length bound.
+        required ``max_length`` are suggested Unicode code-point lengths, measured by
+        Python's ``len``. A positive ``min_length`` still requires nonempty text,
+        but other deviations from the suggested range are not failures.
 
         ``max_num_tokens`` is an independent output limit for a standalone
         generation. When Runtime batches ready calls, it contributes to a shared
         budget and is not an enforced per-answer token limit. ``None`` uses the
-        model's default for standalone calls and Runtime's default contribution
-        for batches or repairs. Character bounds are always checked per answer.
+        client's assumed_avg_num_tokens_per_char (default 2) times max_length,
+        rounded up with a minimum of one token. Suggested lengths are not hard bounds.
         Exhausting the budget must not silently turn an incomplete generation
         into a successful response.
 
@@ -185,9 +186,9 @@ class Lev(ABC):
         instructions: str,
         *,
         min_items: int = 0,
-        max_items: int | None = None,
+        max_items: int,
         min_length_per_item: int = 0,
-        max_length_per_item: int | None = None,
+        max_length_per_item: int,
         max_num_tokens: int | None = None,
     ) -> GenerateListResponse:
         """Generate a list of texts using this instance's state and model.
@@ -198,17 +199,17 @@ class Lev(ABC):
         ``min_items`` / ``max_items`` bounds; an empty list is allowed when
         ``min_items=0``.
 
-        ``min_length_per_item`` and ``max_length_per_item`` are inclusive
-        Unicode code-point bounds for each string, measured by Python's
-        ``len``. Set ``min_length_per_item=1`` to require nonempty items.
-        ``None`` for either upper bound means no upper limit.
+        ``min_length_per_item`` and required ``max_length_per_item`` are suggested
+        Unicode code-point lengths for each string, measured by Python's ``len``.
+        A positive minimum still requires nonempty items. Required ``max_items``
+        is a hard count limit. Neither required maximum accepts None.
 
         ``max_num_tokens`` is a generation budget for the entire list,
         including formatting, in the model's tokens. In a Runtime batch it
         contributes to a shared budget, without an independent per-list token
-        limit. ``None`` uses the model's default for standalone calls and
-        Runtime's default contribution for batches or repairs. Item count and
-        character bounds remain strict. Exhausting the budget must not silently
+        limit. ``None`` estimates ceil(assumed_avg_num_tokens_per_char * max_items *
+        max_length_per_item) + 32 + 8 * max_items. Extraction uses the same
+        formula. Item count and nonempty requirements remain strict. Exhausting the budget must not silently
         turn an incomplete list or item into a successful response.
 
         Implementations must raise ``ValueError`` for negative item or length

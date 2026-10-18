@@ -313,7 +313,9 @@ class Store(MetricStore):
             db.execute("UPDATE inputs SET status='pending',token=token+1,lease_until=NULL,next_attempt=? WHERE job_id=? AND idx=?",
                        (now, item["job_id"], item["idx"]))
             job = self._job(db, item["job_id"])
-            if item["round_attempts"] >= self._policy(db, job)["max_attempts"]:
+            policy = self._policy(db, job)
+            if (not policy.get("retry_unknown_outcomes", True)
+                    or item["round_attempts"] >= policy["max_attempts"]):
                 self._pause(db, job["id"], error)
         for row in db.execute("SELECT id FROM jobs WHERE expired=0 AND terminal_at<=?", (now - self.retention_seconds,)).fetchall():
             job_id = row["id"]
@@ -359,6 +361,12 @@ class Store(MetricStore):
                 return False
             db.execute("UPDATE inputs SET lease_until=? WHERE job_id=? AND idx=?", (self.clock() + self.lease_seconds, claim["job_id"], claim["index"]))
             return True
+
+    def can_dispatch(self, claim):
+        """Pausing blocks new HTTP work, but preserves in-flight ownership."""
+        with self._tx() as db:
+            owned = self._owned(db, claim)
+            return owned is not None and owned[0]["state"] in ("queued", "running")
 
     def finish(self, claim, result, *, elapsed_seconds=None):
         if result.index != claim["index"]:

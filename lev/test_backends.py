@@ -51,8 +51,8 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
         context = InferenceContext({"text": "原文甲", "other": "背景乙"}, "共享政策")
         for operation, args, options, answer in (
             ("generate", ("简述",), {"min_length": 1, "max_length": 2, "max_num_tokens": 16}, "中文"),
-            ("generate_list", ("列出",), {"min_items": 1, "max_length_per_item": 2}, '{"items":["中文"]}'),
-            ("extract", ("抽取",), {"source": "独立来源广州", "min_items": 1}, '{"items":["广州"]}'),
+            ("generate_list", ("列出",), {"min_items": 1, "max_items": 8, "max_length_per_item": 2}, '{"items":["中文"]}'),
+            ("extract", ("抽取",), {"source": "独立来源广州", "min_items": 1, "max_items": 8, "max_length_per_item": 58}, '{"items":["广州"]}'),
         ):
             with self.subTest(operation=operation):
                 async def handle(request):
@@ -69,7 +69,7 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(body["max_tokens"], 16)
                     else:
                         self.assertEqual(body["response_format"], {"type": "json_object"})
-                        self.assertNotIn("max_tokens", body)
+                        self.assertGreater(body["max_tokens"], 0)
                     return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": answer, "reasoning_content": "never record this"}}], "usage": {"completion_tokens": 4}})
                 backend = LLMAPIBackend("https://llm.invalid/v1", "secret", "model", transport=httpx.MockTransport(handle))
                 try:
@@ -80,7 +80,7 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_http_failures_are_sanitized_and_not_retried(self):
         context = InferenceContext("x")
-        call = normalize_call("q", "generate", ("task",), {}, context)
+        call = normalize_call("q", "generate", ("task",), {'max_length': 512}, context)
         for status, error in ((401, BackendFatalError), (403, BackendFatalError), (429, InferenceError), (500, InferenceError)):
             count = 0
             async def handle(request):
@@ -98,7 +98,7 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_bad_llm_results_never_become_success(self):
         context = InferenceContext("广州")
-        call = normalize_call("q", "extract", ("地点",), {}, context)
+        call = normalize_call("q", "extract", ("地点",), {'max_items': 8, 'max_length_per_item': 58}, context)
         for message, finish in (("{}", "stop"), ('{"items":["北京"]}', "stop"), ('{"items":[""]}', "stop"), ('{"items":[null]}', "stop"), ('{"items":[]}', "length"), ("```json\n{}\n```", "stop"), (None, "stop")):
             backend = LLMAPIBackend("https://llm.invalid", "secret", "model", transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"choices": [{"finish_reason": finish, "message": {"content": message}}]})))
             try:
@@ -109,7 +109,7 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_timeout_cancellation_and_model_default_thinking(self):
         context = InferenceContext("x")
-        call = normalize_call("q", "generate", ("x",), {}, context)
+        call = normalize_call("q", "generate", ("x",), {'max_length': 512}, context)
         cancelled = asyncio.Event()
         async def hang(request):
             self.assertNotIn("thinking", json.loads(request.content))
@@ -149,16 +149,16 @@ class ContractTests(unittest.TestCase):
             ("extract", ("x",), {}), ("extract", ("x",), {"source": "a", "max_length_per_item": 0}),
             ("choice", ("x", {}), {}), ("score", ("x", []), {}),
         ):
-            with self.subTest(operation=operation, options=options), self.assertRaises(ValueError):
+            with self.subTest(operation=operation, options=options), self.assertRaises((ValueError, TypeError)):
                 normalize_call("q", operation, args, options, context)
 
     def test_response_contracts(self):
         context = InferenceContext("原文")
         cases = [
             ("choice", ("x", {"a": "A"}), {}, ChoiceResponse("a", float("nan"), {"a": 1})),
-            ("generate", ("x",), {"max_length": 1}, GenerateResponse("中文")),
-            ("generate_list", ("x",), {"min_items": 1}, GenerateListResponse([])),
-            ("extract", ("x",), {}, ExtractResponse(["原 文"])),
+            ("generate", ("x",), {"min_length":1,"max_length": 1}, GenerateResponse("")),
+            ("generate_list", ("x",), {"min_items": 1,"max_items":2,"max_length_per_item":4}, GenerateListResponse([])),
+            ("extract", ("x",), {"max_items":2,"max_length_per_item":4}, ExtractResponse(["原 文"])),
         ]
         for op, args, kwargs, response in cases:
             with self.assertRaises(InferenceError):

@@ -6,6 +6,7 @@ import uuid
 
 from lev.job_protocol import TERMINAL, decode, encode
 from lev.metrics import aggregate, normalize_usage
+from lev.backends.base import BackendFatalError
 
 
 UPGRADE = """
@@ -37,7 +38,8 @@ class MetricStore:
         if backend not in ("decision", "generation") or type(questions) is not int or questions < 1:
             raise ValueError("invalid request metrics")
         with self._tx() as db:
-            if self._owned(db, claim) is None:
+            owned = self._owned(db, claim)
+            if owned is None or owned[0]["state"] not in ("queued", "running"):
                 return False
             args = (request_id, claim["job_id"], claim["index"], claim["attempt"], backend, questions)
             old = db.execute("SELECT id,job_id,idx,attempt,backend,questions FROM http_requests WHERE id=?", (request_id,)).fetchone()
@@ -90,25 +92,49 @@ class MetricStore:
 
 class RequestMeter:
     """One meter per owned attempt, invoked only at the actual HTTP boundary."""
-    def __init__(self, store, claim, backend, *, clock=time.monotonic):
+    def __init__(self, store, claim, backend, *, clock=time.monotonic, observer=None, wall_clock=time.time):
         self.store, self.claim, self.backend, self.clock = store, claim, backend, clock
+        self.observer, self.wall_clock = observer, wall_clock
+
+    def _observe(self, event):
+        if self.observer is not None:
+            try:
+                self.observer({"job_id": self.claim["job_id"], "index": self.claim["index"],
+                               "attempt": self.claim["attempt"], "stage": self.backend, **event})
+            except Exception:
+                raise BackendFatalError("request audit persistence failed", code="metrics_failed") from None
 
     async def start(self, questions):
         identity = uuid.uuid4().hex
-        if not await asyncio.to_thread(self.store.request_started, self.claim, identity, self.backend, questions):
+        try:
+            committed = await asyncio.to_thread(self.store.request_started, self.claim, identity, self.backend, questions)
+        except Exception:
+            raise BackendFatalError("request intent persistence failed", code="metrics_failed") from None
+        if not committed:
+            if self.store.renew(self.claim):
+                raise BackendFatalError("job is paused; no new model request was sent", code="job_paused")
             raise asyncio.CancelledError()
+        self._observe({"event": "intent", "request_id": identity, "questions": questions,
+                       "started_unix": self.wall_clock()})
         return identity
 
     async def finish(self, identity, elapsed, status, usage):
+        outcome = {"event": "outcome", "request_id": identity, "seconds": elapsed,
+                   "http_status": status, "usage": usage, "finished_unix": self.wall_clock()}
+        committed = False
         pending = asyncio.create_task(asyncio.to_thread(self.store.request_finished, self.claim, identity,
                                                         seconds=elapsed, http_status=status, usage=usage))
         try:
-            committed = await asyncio.shield(pending)
-        except asyncio.CancelledError:
-            # Runtime can cancel speculative requests after another call fails.
-            # Finish an already observed HTTP outcome before the attempt ends;
-            # the store still rejects revoked ownership. Never detach a writer.
-            await pending
-            raise
+            try:
+                committed = await asyncio.shield(pending)
+            except asyncio.CancelledError:
+                # Drain persistence and audit before propagating cancellation.
+                # Ownership fencing still applies to stale attempts.
+                committed = await pending
+                raise
+        except Exception:
+            raise BackendFatalError("request outcome persistence failed", code="metrics_failed") from None
+        finally:
+            self._observe({**outcome, "storage_committed": committed})
         if not committed:
             raise asyncio.CancelledError()

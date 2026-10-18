@@ -30,12 +30,21 @@ def backends(manifest):
     d, g = manifest["decision"], manifest["generation"]
     return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout),
             LLMAPIBackend(g["base_url"], generation_token, g["model"], timeout=timeout,
-                          profile=g["profile"], disable_thinking=manifest["disable_thinking"]))
+                          profile=g["profile"], extract_mode=g.get("extract_mode", "validated"),
+                          disable_thinking=manifest["disable_thinking"], request_policy=g.get("request_policy"),
+                          assumed_avg_num_tokens_per_char=g.get("assumed_avg_num_tokens_per_char", 2)))
 
 
 class ObservedBackend:
-    def __init__(self, backend, failures, owned):
+    def __init__(self, backend, failures, owned, *, dispatch_allowed=None):
         self.backend, self.failures, self.owned = backend, failures, owned
+        self.dispatch_allowed = dispatch_allowed
+
+    def _check_dispatch(self):
+        if not self.owned():
+            raise asyncio.CancelledError()
+        if self.dispatch_allowed is not None and not self.dispatch_allowed():
+            raise BackendFatalError("job is paused; no new model request was sent", code="job_paused")
 
     @property
     def supports_llm_batch(self):
@@ -44,9 +53,12 @@ class ObservedBackend:
     def plan_batch(self, *args, **kwargs):
         return self.backend.plan_batch(*args, **kwargs)
 
+    def resolve_token_budget(self, call, fallback):
+        resolve = getattr(self.backend, "resolve_token_budget", None)
+        return resolve(call, fallback) if resolve else (call.arguments.get("max_num_tokens") or fallback)
+
     async def infer(self, *args, **kwargs):
-        if not self.owned():
-            raise asyncio.CancelledError()
+        self._check_dispatch()
         try:
             return await self.backend.infer(*args, **kwargs)
         except Exception as exc:
@@ -54,8 +66,7 @@ class ObservedBackend:
             raise
 
     async def infer_batch(self, *args, **kwargs):
-        if not self.owned():
-            raise asyncio.CancelledError()
+        self._check_dispatch()
         try:
             return await self.backend.infer_batch(*args, **kwargs)
         except Exception as exc:
@@ -66,9 +77,12 @@ class ObservedBackend:
         await self.backend.aclose()
 
 
-def classification(code, metadata):
+def classification(code, metadata, *, retry_unknown_outcomes=True):
     status = metadata.get("http_status")
-    if code in ("authentication_failed", "configuration_failed") or status in (401, 403):
+    if code in ("authentication_failed", "configuration_failed", "backend_protocol_error",
+                "job_paused", "metrics_failed", "diagnostics_failed") or status in (401, 403):
+        return "pause"
+    if not retry_unknown_outcomes and status is None and code in ("model_timeout", "transport_error"):
         return "pause"
     if (code in ("backend_unavailable", "model_timeout", "transport_error")
             or status in (408, 429) or (type(status) is int and 500 <= status <= 599)):
@@ -80,11 +94,14 @@ def classification(code, metadata):
 
 class Worker:
     def __init__(self, store, releases, *, backend_factory=backends, concurrency=8,
-                 poll_interval=0.2, random_source=random.random):
+                 poll_interval=0.2, random_source=random.random, request_observer=None,
+                 diagnostic_observer=None):
         if type(concurrency) is not int or concurrency < 1:
             raise ValueError("worker concurrency must be positive")
         self.store, self.releases, self.backend_factory = store, releases, backend_factory
         self.concurrency, self.poll_interval, self.random = concurrency, poll_interval, random_source
+        self.request_observer = request_observer
+        self.diagnostic_observer = diagnostic_observer
         self.id = uuid.uuid4().hex
 
     async def execute(self, claim):
@@ -93,6 +110,13 @@ class Worker:
         started = time.monotonic()
 
         async def run():
+            def diagnose(stage, event):
+                if self.diagnostic_observer is not None:
+                    try:
+                        self.diagnostic_observer({"job_id": claim["job_id"], "index": claim["index"],
+                            "attempt": claim["attempt"], "stage": stage, **event})
+                    except Exception:
+                        raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
             program = Program.from_json(encode(claim["ir"]).decode())
             if manifest["server_optimize"]:
                 program = optimize_program(program)
@@ -105,20 +129,31 @@ class Worker:
             if not self.store.meter_attempt(claim, supported):
                 raise asyncio.CancelledError()
             if isinstance(d, HTTPBackend):
-                d._request_meter = RequestMeter(self.store, claim, "decision")
+                d._request_meter = RequestMeter(self.store, claim, "decision", observer=self.request_observer)
+                if self.diagnostic_observer is not None:
+                    d.diagnostic_observer = lambda event: diagnose("decision", event)
             if isinstance(g, HTTPBackend) and d is not g:
-                g._request_meter = RequestMeter(self.store, claim, "generation")
-            decision = ObservedBackend(d, failures, lambda: self.store.renew(claim))
-            generation = decision if d is g else ObservedBackend(g, failures, lambda: self.store.renew(claim))
-            async with LevRuntime(decision, generation, **manifest["runtime"]) as runtime:
+                g._request_meter = RequestMeter(self.store, claim, "generation", observer=self.request_observer)
+                if self.diagnostic_observer is not None:
+                    g.diagnostic_observer = lambda event: diagnose("generation", event)
+            decision = ObservedBackend(d, failures, lambda: self.store.renew(claim),
+                                       dispatch_allowed=lambda: self.store.can_dispatch(claim))
+            generation = decision if d is g else ObservedBackend(g, failures, lambda: self.store.renew(claim),
+                                                                 dispatch_allowed=lambda: self.store.can_dispatch(claim))
+            async with LevRuntime(decision, generation, trace=self.diagnostic_observer is not None, **manifest["runtime"]) as runtime:
                 async with await runtime.submit(plan, [RunInput(claim["index"], claim["state"])], mode=claim["mode"]) as stream:
-                    result = await anext(stream)
-                    # Verify one and only one outcome for this isolated input.
                     try:
-                        await anext(stream)
-                    except StopAsyncIteration:
-                        return result
-                    raise RuntimeError("multiple results for an input attempt")
+                        result = await anext(stream)
+                        # Verify one and only one outcome for this isolated input.
+                        try:
+                            await anext(stream)
+                        except StopAsyncIteration:
+                            return result
+                        raise RuntimeError("multiple results for an input attempt")
+                    finally:
+                        if self.diagnostic_observer is not None:
+                            diagnose("runtime", {"event": "trace", "trace": runtime.trace,
+                                               "plan": plan.to_dict()})
 
         task = asyncio.create_task(run())
 
@@ -156,7 +191,8 @@ class Worker:
                 self.store.fail_job(claim, {"code": "execution_failed", "message": "job lowering or runtime failed"}, elapsed_seconds=time.monotonic() - started)
                 return
             error = {"code": code, "message": message}
-            kind = classification(code, metadata)
+            kind = classification(code, metadata,
+                                  retry_unknown_outcomes=manifest["policy"].get("retry_unknown_outcomes", True))
             if kind in ("pause", "retry"):
                 delay = max(self.random() * min(30.0, 2 ** (claim["round_attempt"] - 1)),
                             retry_after_seconds(metadata.get("retry_after"), self.store.clock()))

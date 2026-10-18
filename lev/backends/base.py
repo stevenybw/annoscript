@@ -5,6 +5,8 @@ from collections.abc import Mapping
 import inspect
 import json
 import math
+import time
+import uuid
 
 from lev._data import freeze, thaw, snapshot
 from lev.lev import (Lev, NoulResponse, ChoiceResponse, ScoreResponse,
@@ -113,7 +115,7 @@ def normalize_call(call_id, operation, args, kwargs, context):
             raise ValueError("score criteria must be a nonempty list of strings")
     for key, value in values.items():
         if key.startswith(("min_", "max_")):
-            optional = key.startswith("max_")
+            optional = key == "max_num_tokens"
             positive = key == "max_num_tokens" or (key == "max_length_per_item" and operation == "extract")
             if value is None and optional:
                 continue
@@ -156,21 +158,21 @@ def validate_response(call, response):
             require(number(response.score, 0, len(keys)-1), "invalid score")
             require(response.legend == dict(enumerate(a["criteria"])), "incorrect score legend")
     elif op == "generate":
-        require(type(response.text) is str and length(response.text, a["min_length"], a["max_length"]), "generated text violates length limits")
+        require(type(response.text) is str and (not a["min_length"] or bool(response.text)), "generated text must be a string and satisfy nonempty requirement")
     else:
         require(type(response.items) is list and all(type(x) is str for x in response.items), "items must be a list of strings")
         require(length(response.items, a["min_items"], a["max_items"]), "items violate count limits")
         for item in response.items:
             if op == "extract":
                 require(bool(item) and item in a["source"], "extraction is not a nonempty verbatim source substring")
-                require(a["max_length_per_item"] is None or len(item) <= a["max_length_per_item"], "extraction violates length limit")
             else:
-                require(length(item, a["min_length_per_item"], a["max_length_per_item"]), "generated item violates length limits")
+                require(not a["min_length_per_item"] or bool(item), "generated item violates nonempty requirement")
     return response
 
 
 class HTTPBackend:
-    def __init__(self, base_url, auth_token, model, *, timeout=60.0, transport=None):
+    def __init__(self, base_url, auth_token, model, *, timeout=60.0, transport=None,
+                 diagnostic_observer=None):
         import httpx
         url = httpx.URL(base_url)
         if url.scheme not in ("http", "https") or not url.host or url.userinfo or url.query or url.fragment:
@@ -182,16 +184,39 @@ class HTTPBackend:
         self.base_url, self.model = base_url.rstrip("/"), model
         self._token, self.timeout, self._transport = auth_token, timeout, transport
         self._client = None
+        self.diagnostic_observer = diagnostic_observer
+        self._diagnostic_calls = {}
 
-    async def post(self, url, payload, *, logical_calls=None):
+    def _diagnose(self, event):
+        if self.diagnostic_observer is not None:
+            try:
+                self.diagnostic_observer({"model": self.model, **event})
+            except Exception:
+                raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
+
+    async def post(self, url, payload, *, logical_calls=None, diagnostic_context=None):
         meter = getattr(self, "_request_meter", None)
-        if meter is None:
+        observing = self.diagnostic_observer is not None
+        if meter is None and not observing:
             return await self._post(url, payload)
-        identity = await meter.start(logical_calls if logical_calls is not None else
-                                     len(payload["questions"]) if "questions" in payload else 1)
+        questions = logical_calls if logical_calls is not None else len(payload["questions"]) if "questions" in payload else 1
+        identity = await meter.start(questions) if meter is not None else uuid.uuid4().hex
         timing, metadata = {}, {}
+        diagnostic = {"request_id": identity} if observing else None
         try:
-            data, metadata = await self._post(url, payload, _timing=timing)
+            if observing:
+                context = dict(diagnostic_context or {})
+                calls = context.get("calls", [])
+                parents = {self._diagnostic_calls[c["id"]] for c in calls
+                           if context.get("repair") and c["id"] in self._diagnostic_calls}
+                self._diagnose({"event": "request", "request_id": identity, "started_unix": time.time(),
+                                "body": encode_payload(payload), "questions": questions,
+                                "repair_parent_request_ids": sorted(parents), **context})
+                for call in calls:
+                    self._diagnostic_calls[call["id"]] = identity
+            data, metadata = await self._post(url, payload, _timing=timing, _diagnostic=diagnostic)
+            if observing:
+                metadata["request_id"] = identity
             return data, metadata
         except InferenceError as exc:
             metadata = exc.metadata
@@ -201,9 +226,20 @@ class HTTPBackend:
             # parsing or metric persistence. No finished metric is invented if
             # execution never reached the transport boundary.
             if "seconds" in timing:
-                await meter.finish(identity, timing["seconds"], metadata.get("http_status", timing.get("http_status")), metadata.get("usage"))
+                try:
+                    if meter is not None:
+                        await meter.finish(identity, timing["seconds"], metadata.get("http_status", timing.get("http_status")), metadata.get("usage"))
+                finally:
+                    if observing:
+                        self._diagnose({"event": "outcome", "request_id": identity,
+                                        "seconds": timing["seconds"], "finished_unix": time.time(),
+                                        "http_status": metadata.get("http_status", timing.get("http_status")),
+                                        "usage": metadata.get("usage"),
+                                        "response_received": diagnostic.get("response_received", False)})
+            if observing and diagnostic.get("write_error"):
+                raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
 
-    async def _post(self, url, payload, *, _timing=None):
+    async def _post(self, url, payload, *, _timing=None, _diagnostic=None):
         import asyncio
         import httpx
         if self._client is None:
@@ -211,7 +247,8 @@ class HTTPBackend:
             self._client = httpx.AsyncClient(headers={"Authorization": auth},
                 timeout=self.timeout, transport=self._transport or httpx.AsyncHTTPTransport(retries=0))
         try:
-            started = self._request_meter.clock() if _timing is not None else None
+            clock = getattr(getattr(self, "_request_meter", None), "clock", time.monotonic)
+            started = clock() if _timing is not None else None
             try:
                 async with asyncio.timeout(self.timeout):
                     response = await self._client.post(url, content=encode_payload(payload),
@@ -220,13 +257,22 @@ class HTTPBackend:
                     _timing["http_status"] = response.status_code
             finally:
                 if _timing is not None:
-                    _timing["seconds"] = max(0.0, self._request_meter.clock() - started)
+                    _timing["seconds"] = max(0.0, clock() - started)
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
             raise BackendFatalError("backend connection failed", code="backend_unavailable") from None
         except (TimeoutError, httpx.TimeoutException):
             raise InferenceError("model request timed out", code="model_timeout") from None
         except httpx.RequestError:
             raise InferenceError("model transport failed", code="transport_error") from None
+        if _diagnostic is not None:
+            _diagnostic["response_received"] = True
+            try:
+                self._diagnose({"event": "response", "request_id": _diagnostic["request_id"],
+                                "finished_unix": time.time(), "http_status": response.status_code,
+                                "body": response.content, "complete": True})
+            except BackendFatalError:
+                # Preserve numeric usage and HTTP status even if the raw sink fails.
+                _diagnostic["write_error"] = True
         metadata = {"http_status": response.status_code}
         if "Retry-After" in response.headers:
             metadata["retry_after"] = response.headers["Retry-After"]
@@ -246,6 +292,14 @@ class HTTPBackend:
         if response.status_code in (401, 403):
             raise BackendFatalError("backend authentication failed", code="authentication_failed", metadata=metadata)
         if response.status_code >= 400:
+            error = data.get("error") if isinstance(data, dict) else None
+            message = error.get("message") if isinstance(error, dict) else None
+            if response.status_code == 400 and isinstance(message, str) and (
+                    "System message must be at the beginning." in message):
+                # Recognize a deployment protocol error without logging the
+                # provider body. Context/input errors remain request-local.
+                raise BackendFatalError("backend chat template rejected system message layout",
+                                        code="backend_protocol_error", metadata=metadata)
             raise InferenceError(f"model HTTP error {response.status_code}", code="model_http_error", metadata=metadata)
         if data is None:
             raise InferenceError("backend returned invalid JSON", code="invalid_response", metadata=metadata)

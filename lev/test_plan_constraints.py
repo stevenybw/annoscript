@@ -14,14 +14,14 @@ from lev.test_plan import PureLev, checked_loop
 
 
 def checked_chain(lev):
-    text = lev.generate("check").text
+    text = lev.generate("check", max_length=512).text
     constrain(text == "ok", message="check failed")
-    other = lev.generate("independent").text
-    return lev.generate(other).text
+    other = lev.generate("independent", max_length=512).text
+    return lev.generate(other, max_length=512).text
 
 
 def checked_constant_return(lev):
-    text = lev.generate("check").text
+    text = lev.generate("check", max_length=512).text
     constrain(text == "ok", message="check failed")
     return "done"
 
@@ -29,35 +29,35 @@ def checked_constant_return(lev):
 def checked_nested_return(lev):
     if lev.state:
         if lev.state[0]:
-            text = lev.generate("check").text
+            text = lev.generate("check", max_length=512).text
             constrain(text == "ok", message="check failed")
     return "done"
 
 
 def checked_unused_loop(lev):
     for item in lev.state:
-        text = lev.generate(item).text
+        text = lev.generate(item, max_length=512).text
         constrain(text == "ok", message="check failed")
     return "done"
 
 
 def checked_data(lev):
-    text = lev.generate("first").text
+    text = lev.generate("first", max_length=512).text
     constrain(text != "")
-    return lev.generate(text + " second").text
+    return lev.generate(text + " second", max_length=512).text
 
 
 def checked_control(lev):
-    if lev.generate("predicate").text == "selected":
-        text = lev.generate("selected").text
+    if lev.generate("predicate", max_length=512).text == "selected":
+        text = lev.generate("selected", max_length=512).text
         constrain(text == "ok", message="selected failed")
-    return lev.generate("independent").text
+    return lev.generate("independent", max_length=512).text
 
 
 def checked_memory(lev):
     data = {"value": "initial"}
     alias = data
-    alias["value"] = lev.generate("updated").text
+    alias["value"] = lev.generate("updated", max_length=512).text
     constrain(data["value"] == "updated", message=data["value"])
     alias["value"] = "later"
     return data["value"]
@@ -78,16 +78,16 @@ def checked_message(lev):
 
 
 def checked_rebinding(lev):
-    value = lev.generate("original").text
+    value = lev.generate("original", max_length=512).text
     constrain(value == "original")
     value = "rebound"
     return value
 
 
 def checked_shared(lev):
-    a = lev.generate("same").text
+    a = lev.generate("same", max_length=512).text
     constrain(a == lev.state, message="shared check failed")
-    b = lev.generate("same").text
+    b = lev.generate("same", max_length=512).text
     return [a, b]
 
 
@@ -95,7 +95,7 @@ def checked_memory_loop(lev):
     data = {"value": "initial"}
     for item in lev.state:
         data["value"] = item
-        text = lev.generate(item).text
+        text = lev.generate(item, max_length=512).text
         constrain(data["value"] == text, message="wrong iteration")
     return data["value"]
 

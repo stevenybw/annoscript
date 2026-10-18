@@ -25,7 +25,8 @@ class DecisionAPIBackend(HTTPBackend):
             else:
                 q["criteria"] = a["criteria"]
             questions[call.id] = q
-        data, metadata = await self.post(self.base_url, {"model": self.model, "state": thaw(context.state), "questions": questions})
+        data, metadata = await self.post(self.base_url, {"model": self.model, "state": thaw(context.state), "questions": questions},
+            diagnostic_context={"calls": [{"id": c.id, "operation": c.operation, "arguments": thaw(c.arguments)} for c in calls]})
         current_call = None
         try:
             answers = data["answers"]

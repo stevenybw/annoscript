@@ -509,8 +509,11 @@ class LevRuntime:
         elif batch_plan is not None:
             coroutine = backend.infer_batch(run.context, calls, max_tokens=batch_plan.max_tokens)
         elif requests[0].repair_attempt:
+            resolve = getattr(backend, "resolve_token_budget", None)
+            repair_budget = (resolve(calls[0], self.llm_batch_default_tokens) if resolve else
+                             calls[0].arguments.get("max_num_tokens") or self.llm_batch_default_tokens)
             coroutine = backend.infer(run.context, calls[0], repair_feedback=requests[0].repair_feedback,
-                max_tokens_override=calls[0].arguments.get("max_num_tokens") or self.llm_batch_default_tokens)
+                max_tokens_override=repair_budget)
         else:
             coroutine = backend.infer(run.context, calls[0])
         future = asyncio.create_task(coroutine)
@@ -537,7 +540,7 @@ class LevRuntime:
             request.repair_parent = batch
             request.repair_feedback = (
                 "The answer was missing, truncated, or violated the required format or task constraints. "
-                "Check character and item limits and the exact extraction source"
+                "Check structure, item count, nonempty requirements and the exact extraction source; character lengths are advisory"
             )
             request.status = "queued"
         return True
