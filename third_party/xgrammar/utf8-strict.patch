@@ -1,0 +1,535 @@
+--- a/cpp/earley_parser.cc
++++ b/cpp/earley_parser.cc
+@@ -889,7 +889,7 @@
+ 
+   // The state is matching a UTF8 character (continuation bytes).
+   if (state.sub_element_id > 0) {
+-    if ((ch & 0xC0) == 0x80) {
++    if (IsValidUTF8Continuation(state.partial_codepoint, state.sub_element_id, ch)) {
+       auto new_state = state;
+       new_state.sub_element_id--;
+       // Accumulate the codepoint from continuation byte
+@@ -1024,7 +1024,7 @@
+ 
+   // The state is matching a UTF8 character (continuation bytes).
+   if (state.sub_element_id > 0) {
+-    if ((ch & 0xC0) == 0x80) {
++    if (IsValidUTF8Continuation(state.partial_codepoint, state.sub_element_id, ch)) {
+       auto new_state = state;
+       new_state.sub_element_id--;
+       // Accumulate the codepoint from continuation byte
+--- a/cpp/fsm_builder.cc
++++ b/cpp/fsm_builder.cc
+@@ -136,7 +136,7 @@
+     if ((max & 0x00FFFF) != 0xBFBF) {
+       int tmp_state_max = fsm.AddState();
+       fsm.AddEdge(from, tmp_state_max, byte_max[2], byte_max[2]);
+-      AddSameLengthCharacterRange(fsm, tmp_state_max, to, 0x0080, (max & 0x00FFFF));
++      AddSameLengthCharacterRange(fsm, tmp_state_max, to, 0x8080, (max & 0x00FFFF));
+     } else {
+       byte_max[2]++;
+     }
+@@ -188,79 +188,24 @@
+ void AddPackedUTF8RangeEdges(FSM& fsm, int from, int to, uint32_t min, uint32_t max) {
+   XGRAMMAR_CHECK(min <= max) << "Invalid character range: min (" << min << ") > max (" << max
+                              << ")";
+-  // Ensure max and min are valid unicode value.
+-  if (max > kMax4BytesUnicode) {
+-    max = kMax4BytesUnicode;
+-  } else if (max > kMax3BytesUnicode) {
+-    if (max < kMin4BytesUnicode) {
+-      max = kMax3BytesUnicode;
+-    }
+-  } else if (max > kMax2BytesUnicode) {
+-    if (max < kMin3BytesUnicode) {
+-      max = kMax2BytesUnicode;
+-    }
+-  } else if (max < kMin2BytesUnicode && (max > kMax1ByteUnicode)) {
+-    max = kMax1ByteUnicode;
+-  }
+-
+-  if (min > kMax4BytesUnicode) {
+-    min = kMax4BytesUnicode;
+-  } else if (min > kMax3BytesUnicode) {
+-    if (min < kMin4BytesUnicode) {
+-      min = kMin4BytesUnicode;
+-    }
+-  } else if (min > kMax2BytesUnicode) {
+-    if (min < kMin3BytesUnicode) {
+-      min = kMin3BytesUnicode;
+-    }
+-  } else if (min < kMin2BytesUnicode && (min > kMax1ByteUnicode)) {
+-    min = kMin2BytesUnicode;
+-  }
+-
+-  // Step2. Divide the range into several ranges, which contain characters with different lengths.
+-  if (max <= kMax1ByteUnicode) {
+-    AddSameLengthCharacterRange(fsm, from, to, min, max);
+-    return;
+-  }
+-  if (max <= kMax2BytesUnicode) {
+-    if (min >= kMin2BytesUnicode) {
+-      AddSameLengthCharacterRange(fsm, from, to, min, max);
+-    } else {
+-      AddSameLengthCharacterRange(fsm, from, to, min, kMax1ByteUnicode);
+-      AddSameLengthCharacterRange(fsm, from, to, kMin2BytesUnicode, max);
+-    }
+-    return;
+-  }
+-  if (max <= kMax3BytesUnicode) {
+-    if (min >= kMin3BytesUnicode) {
+-      AddSameLengthCharacterRange(fsm, from, to, min, max);
+-    } else if (min >= kMin2BytesUnicode) {
+-      AddSameLengthCharacterRange(fsm, from, to, min, kMax2BytesUnicode);
+-      AddSameLengthCharacterRange(fsm, from, to, kMin3BytesUnicode, max);
+-    } else {
+-      AddSameLengthCharacterRange(fsm, from, to, min, kMax1ByteUnicode);
+-      AddSameLengthCharacterRange(fsm, from, to, kMin2BytesUnicode, kMax2BytesUnicode);
+-      AddSameLengthCharacterRange(fsm, from, to, kMin3BytesUnicode, max);
+-    }
+-    return;
+-  }
+-  XGRAMMAR_CHECK(max <= kMax4BytesUnicode);
+-  if (min >= kMin4BytesUnicode) {
+-    AddSameLengthCharacterRange(fsm, from, to, min, max);
+-  } else if (min >= kMin3BytesUnicode) {
+-    AddSameLengthCharacterRange(fsm, from, to, min, kMax3BytesUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin4BytesUnicode, max);
+-  } else if (min >= kMin2BytesUnicode) {
+-    AddSameLengthCharacterRange(fsm, from, to, min, kMax2BytesUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin3BytesUnicode, kMax3BytesUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin4BytesUnicode, max);
+-  } else {
+-    AddSameLengthCharacterRange(fsm, from, to, min, kMax1ByteUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin2BytesUnicode, kMax2BytesUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin3BytesUnicode, kMax3BytesUnicode);
+-    AddSameLengthCharacterRange(fsm, from, to, kMin4BytesUnicode, max);
+-  }
+-  return;
++  // Intersect with canonical UTF-8 scalar ranges before expanding bytes. Each
++  // segment has independent 80..BF continuation ranges; E0, ED, F0 and F4
++  // require a narrower second byte. Packed endpoints alone do not exclude
++  // overlong encodings or UTF-16 surrogates in the middle of a range.
++  static constexpr std::array<std::pair<uint32_t, uint32_t>, 9> kScalarRanges = {{
++      {0x00, 0x7F}, {0xC280, 0xDFBF},
++      {0xE0A080, 0xE0BFBF}, {0xE18080, 0xECBFBF},
++      {0xED8080, 0xED9FBF}, {0xEE8080, 0xEFBFBF},
++      {0xF0908080, 0xF0BFBFBF}, {0xF1808080, 0xF3BFBFBF},
++      {0xF4808080, 0xF48FBFBF}
++  }};
++  for (const auto& [low, high] : kScalarRanges) {
++    const auto begin = std::max(min, low);
++    const auto end = std::min(max, high);
++    if (begin <= end) {
++      AddSameLengthCharacterRange(fsm, from, to, begin, end);
++    }
++  }
+ }
+ 
+ std::string RewriteRegexDots(const std::string& pattern, bool dot_matches_newline) {
+@@ -1073,6 +1018,11 @@
+ 
+ int RegexIR::AddSingleCodepoint(FSMWithStartEnd& result, int current, uint32_t codepoint) const {
+   int next = result.AddState();
++  // An explicitly named non-scalar has an empty Unicode language. Raw byte
++  // strings and Substring chunks retain their separate byte semantics.
++  if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF)) {
++    return next;
++  }
+   if (codepoint <= kMax1ByteUnicode) {
+     result.GetFsm().AddEdge(current, next, codepoint, codepoint);
+     if (case_insensitive) {
+--- a/cpp/fsm_builder.h
++++ b/cpp/fsm_builder.h
+@@ -21,12 +21,12 @@
+  * stores the UTF-8 bytes of one codepoint as (byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3,
+  * left-aligned to the actual length (e.g. a 2-byte character is (byte0 << 8) | byte1). */
+ constexpr uint32_t kMax1ByteUnicode = 0x7F;
+-constexpr uint32_t kMin2BytesUnicode = 0xC080;
++constexpr uint32_t kMin2BytesUnicode = 0xC280;
+ constexpr uint32_t kMax2BytesUnicode = 0xDFBF;
+-constexpr uint32_t kMin3BytesUnicode = 0xE08080;
++constexpr uint32_t kMin3BytesUnicode = 0xE0A080;
+ constexpr uint32_t kMax3BytesUnicode = 0xEFBFBF;
+-constexpr uint32_t kMin4BytesUnicode = 0xF0808080;
+-constexpr uint32_t kMax4BytesUnicode = 0xF7BFBFBF;
++constexpr uint32_t kMin4BytesUnicode = 0xF0908080;
++constexpr uint32_t kMax4BytesUnicode = 0xF48FBFBF;
+ 
+ /*! \brief Convert a Unicode codepoint to the packed UTF-8 format described above. */
+ uint32_t CodepointToPackedUTF8(uint32_t codepoint);
+--- a/cpp/grammar_functor.cc
++++ b/cpp/grammar_functor.cc
+@@ -1440,38 +1440,25 @@
+       expr.type == ExprType::kCharacterClass || expr.type == ExprType::kCharacterClassStar
+   );
+   XGRAMMAR_DCHECK(expr[0]);  // Negative character class should be true.
+-  std::bitset<128> char_set;
++  // Complement in codepoint space, then use the shared strict UTF-8 builder.
++  // Byte casts here would also lose non-ASCII exclusions.
++  std::vector<std::pair<uint32_t, uint32_t>> ranges;
+   for (int i = 1; i < static_cast<int>(expr.size()); i += 2) {
+-    uint8_t byte_min = static_cast<uint8_t>(expr[i]);
+-    uint8_t byte_max = static_cast<uint8_t>(expr[i + 1]);
+-    if (byte_max > 128) {
+-      XGRAMMAR_LOG(WARNING) << "Negative Character class contains byte greater than 127, "
+-                            << "clamping to 127.";
+-      byte_max = 127;
+-    }
+-    for (uint8_t j = byte_min; j <= byte_max; ++j) {
+-      char_set.set(j);
+-    }
+-  }
+-
+-  int left_bound = -1;
+-  for (int i = 0; i < 128; ++i) {
+-    if (!char_set[i]) {
+-      left_bound = i;
+-      int right_bound = i + 1;
+-      while (right_bound < 128 && !char_set[right_bound]) {
+-        right_bound++;
+-      }
+-      target_fsm_.AddEdge(
+-          start_state,
+-          end_state,
+-          static_cast<uint8_t>(left_bound),
+-          static_cast<uint8_t>(right_bound - 1)
+-      );
+-      i = right_bound;
+-    }
+-  }
+-  AddCharacterRange(start_state, end_state, kMin2BytesUnicode, kMax4BytesUnicode);
++    ranges.emplace_back(static_cast<uint32_t>(expr[i]), static_cast<uint32_t>(expr[i + 1]));
++  }
++  std::sort(ranges.begin(), ranges.end());
++  uint32_t next = 0;
++  for (const auto& [low, high] : ranges) {
++    if (next < low) {
++      AddCharacterRange(start_state, end_state, CodepointToPackedUTF8(next),
++                        CodepointToPackedUTF8(std::min(low - 1, uint32_t{0x10FFFF})));
++    }
++    if (high >= 0x10FFFF) return;
++    next = std::max(next, high + 1);
++  }
++  if (next <= 0x10FFFF) {
++    AddCharacterRange(start_state, end_state, CodepointToPackedUTF8(next), kMax4BytesUnicode);
++  }
+ }
+ 
+ void GrammarFSMBuilderImpl::AddCharacterClassTransitions(
+--- a/cpp/support/encoding.h
++++ b/cpp/support/encoding.h
+@@ -141,7 +141,9 @@
+ /******************** Implementation ********************/
+ 
+ inline std::string CharToUTF8(TCodepoint codepoint) {
+-  XGRAMMAR_DCHECK(codepoint <= 0x10FFFF) << "Invalid codepoint: " << codepoint;
++  XGRAMMAR_CHECK(codepoint >= 0 && codepoint <= 0x10FFFF &&
++                 !(codepoint >= 0xD800 && codepoint <= 0xDFFF))
++      << "Invalid Unicode scalar value: " << codepoint;
+   std::string utf8;
+   if (codepoint <= 0x7F) {
+     // 1-byte sequence
+@@ -166,6 +168,9 @@
+ }
+ 
+ inline std::tuple<bool, int, TCodepoint> HandleUTF8FirstByte(uint8_t byte) {
++  if (byte == 0xC0 || byte == 0xC1 || byte >= 0xF5) {
++    return {false, 0, 0};
++  }
+   static const std::array<int8_t, 5> kFirstByteMask = {0x00, 0x7F, 0x1F, 0x0F, 0x07};
+   // clang-format off
+   static const std::array<int, 256> kUtf8Bytes = {
+@@ -194,11 +199,30 @@
+   return {true, num_bytes, byte & kFirstByteMask[num_bytes]};
+ }
+ 
++/*! \brief Validate one continuation byte of a canonical Unicode scalar prefix.
++ * Earlier bytes must already have passed this check. With that invariant,
++ * (partial, remaining) identifies the restricted E0/ED/F0/F4 second byte
++ * without adding parser state or changing cache keys.
++ */
++inline bool IsValidUTF8Continuation(TCodepoint partial, int remaining, uint8_t byte) {
++  if (byte < 0x80 || byte > 0xBF) {
++    return false;
++  }
++  if (remaining == 3) {
++    if (partial == 0 && byte < 0x90) return false;  // F0: no overlong encoding
++    if (partial == 4 && byte > 0x8F) return false;  // F4: at most U+10FFFF
++  } else if (remaining == 2) {
++    if (partial == 0 && byte < 0xA0) return false;  // E0: no overlong encoding
++    if (partial == 0xD && byte > 0x9F) return false;  // ED: no surrogate
++  }
++  return true;
++}
++
+ inline std::pair<TCodepoint, int32_t> ParseNextUTF8(const char* utf8) {
+   auto [accepted, num_bytes, res] = HandleUTF8FirstByte(utf8[0]);
+   if (accepted) {
+     for (int i = 1; i < num_bytes; ++i) {
+-      if (utf8[i] == 0 || (static_cast<uint8_t>(utf8[i]) & 0xC0) != 0x80) {
++      if (!IsValidUTF8Continuation(res, num_bytes - i, static_cast<uint8_t>(utf8[i]))) {
+         // invalid utf8
+         accepted = false;
+         break;
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "xgrammar"
+-version = "0.2.5+lev.substring2.2"
++version = "0.2.5+lev.substring2.3"
+ description = "Efficient, Flexible and Portable Structured Generation"
+ authors = [{ name = "MLC Team" }]
+ readme = "README.md"
+--- a/tests/cpp/test_fsm_builder.cc
++++ b/tests/cpp/test_fsm_builder.cc
+@@ -228,19 +228,20 @@
+       GrammarExprType::kCharacterClass, datas.data(), static_cast<int32_t>(datas.size())
+   };
+   auto fsm = GrammarFSMBuilder::CharacterClass(grammar_expr);
+-  auto fsm_printed = fsm.ToString();
+-  std::string expected_fsm_printed =
+-      R"(FSM(num_states=8, start=0, end=[1], edges=[
+-0: [[\0-@]->1, [[-`]->1, [{-\x7f]->1, [\xc0-\xdf]->2, [\xe0-\xef]->3, [\xf0-\xf7]->5]
+-1: []
+-2: [[\x80-\xbf]->1]
+-3: [[\x80-\xbf]->4]
+-4: [[\x80-\xbf]->1]
+-5: [[\x80-\xbf]->6]
+-6: [[\x80-\xbf]->7]
+-7: [[\x80-\xbf]->1]
+-]))";
+-  EXPECT_EQ(fsm_printed, expected_fsm_printed);
++  auto dfa = std::move(fsm.ToDFA()).Unwrap();
++  auto accepts = [&](const std::string& bytes) {
++    int state = dfa.GetStart();
++    for (uint8_t byte : bytes) {
++      state = dfa.GetFsm().GetNextState(state, byte);
++      if (state < 0) return false;
++    }
++    return dfa.IsEndState(state);
++  };
++  EXPECT_FALSE(accepts("a")); EXPECT_FALSE(accepts("Z"));
++  EXPECT_TRUE(accepts("!")); EXPECT_TRUE(accepts("中"));
++  EXPECT_TRUE(accepts("😀")); EXPECT_TRUE(accepts("\xef\xbf\xbd"));
++  EXPECT_FALSE(accepts("\xc0\x80")); EXPECT_FALSE(accepts("\xe0\x80\x80"));
++  EXPECT_FALSE(accepts("\xed\xa0\x80")); EXPECT_FALSE(accepts("\xf4\x90\x80\x80"));
+ }
+ 
+ TEST(XGrammarFSMBuilderTest, TestCharacterClassFSMBuilder4) {
+@@ -249,18 +250,20 @@
+       GrammarExprType::kCharacterClassStar, datas.data(), static_cast<int32_t>(datas.size())
+   };
+   auto fsm = GrammarFSMBuilder::CharacterClass(grammar_expr);
+-  auto fsm_printed = fsm.ToString();
+-  std::string expected_fsm_printed =
+-      R"(FSM(num_states=7, start=0, end=[0], edges=[
+-0: [[\0-@]->0, [[-`]->0, [{-\x7f]->0, [\xc0-\xdf]->1, [\xe0-\xef]->2, [\xf0-\xf7]->4]
+-1: [[\x80-\xbf]->0]
+-2: [[\x80-\xbf]->3]
+-3: [[\x80-\xbf]->0]
+-4: [[\x80-\xbf]->5]
+-5: [[\x80-\xbf]->6]
+-6: [[\x80-\xbf]->0]
+-]))";
+-  EXPECT_EQ(fsm_printed, expected_fsm_printed);
++  auto dfa = std::move(fsm.ToDFA()).Unwrap();
++  auto accepts = [&](const std::string& bytes) {
++    int state = dfa.GetStart();
++    for (uint8_t byte : bytes) {
++      state = dfa.GetFsm().GetNextState(state, byte);
++      if (state < 0) return false;
++    }
++    return dfa.IsEndState(state);
++  };
++  EXPECT_FALSE(accepts("a")); EXPECT_FALSE(accepts("Z"));
++  EXPECT_TRUE(accepts("!")); EXPECT_TRUE(accepts("中"));
++  EXPECT_TRUE(accepts("😀")); EXPECT_TRUE(accepts("\xef\xbf\xbd"));
++  EXPECT_FALSE(accepts("\xc0\x80")); EXPECT_FALSE(accepts("\xe0\x80\x80"));
++  EXPECT_FALSE(accepts("\xed\xa0\x80")); EXPECT_FALSE(accepts("\xf4\x90\x80\x80"));
+ }
+ 
+ TEST(XGrammarFSMBuilderTest, TestSequenceFSMBuilder) {
+--- a/tests/cpp/test_utf8_strict.cc
++++ b/tests/cpp/test_utf8_strict.cc
+@@ -0,0 +1,94 @@
++#include <gtest/gtest.h>
++#include <string>
++#include <vector>
++#include "earley_parser.h"
++#include "fsm_builder.h"
++#include "grammar_functor.h"
++#include "support/encoding.h"
++using namespace xgrammar;
++
++static std::vector<std::string> BadUTF8() {
++  return {"\x80", "\xbf", "\xc0\x80", "\xc1\x80", "\xe0\x80\x80",
++          "\xe0\x9f\xbf", "\xed\xa0\x80", "\xed\xbf\xbf", "\xf0\x80\x80\x80",
++          "\xf0\x8f\xbf\xbf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80",
++          "\xff", "\xe2\x28\xa1", "\xe2\x82", "\xf0\x9f\x98"};
++}
++static bool AcceptFSM(const FSMWithStartEnd& f, const std::string& bytes) {
++  int state = f.GetStart();
++  for (uint8_t byte : bytes) {
++    state = f.GetFsm().GetNextState(state, byte);
++    if (state < 0) return false;
++  }
++  return f.IsEndState(state);
++}
++TEST(StrictUTF8, EveryScalarAndInvalidEncodings) {
++  auto result = RegexFSMBuilder::Build("[\\s\\S]");
++  ASSERT_TRUE(result.IsOk());
++  auto dfa_result = std::move(result).Unwrap().ToDFA();
++  ASSERT_TRUE(dfa_result.IsOk());
++  auto fsm = std::move(dfa_result).Unwrap();
++  for (uint32_t cp = 0; cp <= 0x10FFFF; ++cp) {
++    if (cp >= 0xD800 && cp <= 0xDFFF) continue;
++    auto bytes = CharToUTF8(cp);
++    ASSERT_TRUE(AcceptFSM(fsm, bytes)) << cp;
++    auto decoded = ParseNextUTF8(bytes.c_str());
++    ASSERT_EQ(decoded.first, cp);
++    ASSERT_EQ(decoded.second, bytes.size());
++  }
++  for (const auto& bytes : BadUTF8()) {
++    EXPECT_FALSE(AcceptFSM(fsm, bytes));
++    EXPECT_EQ(ParseNextUTF8(bytes.c_str()).first, CharHandlingError::kInvalidUTF8);
++  }
++}
++TEST(StrictUTF8, EarleyWithoutFSMAndRollback) {
++  for (const auto& text : {"root ::= [^a]", "root ::= [^a]*", "root ::= [\\u0080-\\U0010ffff]"}) {
++    auto g = Grammar::FromEBNF(text);
++    g->optimized = true;
++    g->per_rule_fsms.resize(g->NumRules());
++    // Force the scalar character-class parser, independently of FSM optimization.
++    for (auto& fsm : g->per_rule_fsms) fsm.reset();
++    const auto& choices = g->GetGrammarExpr(g->GetRootRule().body_expr_id);
++    int seq = choices[0];
++    for (int i = 0; i < choices.size(); ++i) {
++      if (g->GetGrammarExpr(choices[i]).size() > 0) {seq = choices[i];break;}
++    }
++    ParserState initial(-1, seq, 0, ParserState::kNoPrevInputPos);
++    for (const auto& bytes : BadUTF8()) {
++      EarleyParser parser(g, initial);bool accepted = true;
++      for (uint8_t b : bytes) if (!parser.Advance(b)) {accepted = false;break;}
++      EXPECT_FALSE(accepted && parser.IsCompleted());
++    }
++    for (uint32_t cp : {0x80U,0x7FFU,0x800U,0xD7FFU,0xE000U,0xFFFFU,0x10000U,0x10FFFFU,0xFFFDU}) {
++      auto bytes = CharToUTF8(cp);EarleyParser parser(g, initial);
++      for (uint8_t b : bytes) ASSERT_TRUE(parser.Advance(b));
++      ASSERT_TRUE(parser.IsCompleted());
++      parser.PopLastStates(1);ASSERT_FALSE(parser.IsCompleted());
++      ASSERT_TRUE(parser.Advance(static_cast<uint8_t>(bytes.back())));
++      ASSERT_TRUE(parser.IsCompleted());
++    }
++    EarleyParser p(g, initial);ASSERT_TRUE(p.Advance(0xE0));EXPECT_FALSE(p.Advance(0x80));
++    ASSERT_TRUE(p.Advance(0xA0));ASSERT_TRUE(p.Advance(0x80));ASSERT_TRUE(p.IsCompleted());
++  }
++}
++TEST(StrictUTF8, ValidContinuationPrefixTable) {
++  for (unsigned b = 0; b < 256; ++b) {
++    EXPECT_EQ(IsValidUTF8Continuation(0,2,b),b>=0xA0 && b<=0xBF);
++    EXPECT_EQ(IsValidUTF8Continuation(0xD,2,b),b>=0x80 && b<=0x9F);
++    EXPECT_EQ(IsValidUTF8Continuation(0,3,b),b>=0x90 && b<=0xBF);
++    EXPECT_EQ(IsValidUTF8Continuation(4,3,b),b>=0x80 && b<=0x8F);
++  }
++}
++TEST(StrictUTF8, RawBytesRemainRaw) {
++  for (const auto& bytes : BadUTF8()) {
++    std::vector<int32_t> data(bytes.begin(),bytes.end());
++    Grammar::Impl::GrammarExpr expr{Grammar::Impl::GrammarExprType::kByteString,data.data(),static_cast<int32_t>(data.size())};
++    auto fsm = GrammarFSMBuilder::ByteString(expr);
++    EXPECT_TRUE(AcceptFSM(fsm,bytes));
++  }
++}
++
++TEST(StrictUTF8, UnicodeLiteralRejectsNonScalars) {
++  for (int32_t cp : {-1,0xD800,0xDFFF,0x110000}) EXPECT_ANY_THROW(CharToUTF8(cp));
++  EXPECT_ANY_THROW(Grammar::FromEBNF("root ::= \"\\uD800\""));
++  EXPECT_ANY_THROW(Grammar::FromEBNF("root ::= \"\\U00110000\""));
++}
+--- a/tests/python/test_grammar_fsm_builder.py
++++ b/tests/python/test_grammar_fsm_builder.py
+@@ -341,23 +341,7 @@
+     ),
+     pytest.param(
+         'root ::= "x" [^0-9] "y" [^a-z]* "z"',
+-        _fsm_snapshot(
+-            r"""
+-            Rule 0: root, FSM: CompactFSM(num_states=11, start=7, end=[10], edges=[
+-            0: [[\x80-\xbf]->2]
+-            1: [[\x80-\xbf]->3]
+-            2: [[\x80-\xbf]->5]
+-            3: [[\x80-\xbf]->6]
+-            4: [[\0-/]->5, [:-\x7f]->5, [\xc0-\xdf]->2, [\xe0-\xef]->0, [\xf0-\xf7]->8]
+-            5: ['y'->6]
+-            6: [[\0-`]->6, 'z'->10, [{-\x7f]->6, [\xc0-\xdf]->3, [\xe0-\xef]->1, [\xf0-\xf7]->9]
+-            7: ['x'->4]
+-            8: [[\x80-\xbf]->0]
+-            9: [[\x80-\xbf]->1]
+-            10: []
+-            ])
+-            """
+-        ),
++        "Rule 0: root, FSM: CompactFSM(num_states=19, start=7, end=[18], edges=[\n0: [[\\x80-\\xbf]->2]\n1: [[\\x80-\\xbf]->3]\n2: [[\\x80-\\xbf]->5]\n3: [[\\x80-\\xbf]->6]\n4: [[\\0-/]->5, [:-\\x7f]->5, [\\xc2-\\xdf]->2, '\\xe0'->8, [\\xe1-\\xec]->0, '\\xed'->9, [\\xee-\\xef]->0, '\\xf0'->10, [\\xf1-\\xf3]->11, '\\xf4'->12]\n5: ['y'->6]\n6: [[\\0-`]->6, 'z'->18, [{-\\x7f]->6, [\\xc2-\\xdf]->3, '\\xe0'->13, [\\xe1-\\xec]->1, '\\xed'->14, [\\xee-\\xef]->1, '\\xf0'->15, [\\xf1-\\xf3]->16, '\\xf4'->17]\n7: ['x'->4]\n8: [[\\xa0-\\xbf]->2]\n9: [[\\x80-\\x9f]->2]\n10: [[\\x90-\\xbf]->0]\n11: [[\\x80-\\xbf]->0]\n12: [[\\x80-\\x8f]->0]\n13: [[\\xa0-\\xbf]->3]\n14: [[\\x80-\\x9f]->3]\n15: [[\\x90-\\xbf]->1]\n16: [[\\x80-\\xbf]->1]\n17: [[\\x80-\\x8f]->1]\n18: []\n])\n",
+         id="negated-character-classes",
+     ),
+     pytest.param(
+@@ -595,45 +579,7 @@
+     ),
+     pytest.param(
+         'root ::= a b c\na ::= "x" [0-9]*\nb ::= a "y" | [^xyz]\nc ::= b{1,3} "end"',
+-        _fsm_snapshot(
+-            r"""
+-            Rule 0: root, FSM: CompactFSM(num_states=23, start=2, end=[3], edges=[
+-            0: [Rule(1)->1, [0-9]->0]
+-            1: [Rule(2)->3]
+-            2: ['x'->0]
+-            3: []
+-            ])
+-            Rule 1: b, FSM: CompactFSM(num_states=23, start=7, end=[5], edges=[
+-            4: [[\x80-\xbf]->6]
+-            5: []
+-            6: [[\x80-\xbf]->5]
+-            7: [[\0-w]->5, 'x'->8, [{-\x7f]->5, [\xc0-\xdf]->6, [\xe0-\xef]->4, [\xf0-\xf7]->9]
+-            8: [[0-9]->8, 'y'->5]
+-            9: [[\x80-\xbf]->4]
+-            ])
+-            Rule 2: c, FSM: CompactFSM(num_states=23, start=11, end=[14], edges=[
+-            10: ['e'->12]
+-            11: [Rule(5)->10]
+-            12: ['n'->13]
+-            13: ['d'->14]
+-            14: []
+-            ])
+-            Rule 3: c_1, FSM: CompactFSM(num_states=23, start=15, end=[15, 17], edges=[
+-            15: [Rule(1)->16]
+-            16: [Rule(4)->17]
+-            17: []
+-            ])
+-            Rule 4: c_2, FSM: CompactFSM(num_states=23, start=18, end=[18, 19], edges=[
+-            18: [Rule(1)->19]
+-            19: []
+-            ])
+-            Rule 5: c_3, FSM: CompactFSM(num_states=23, start=21, end=[22], edges=[
+-            20: [Rule(3)->22]
+-            21: [Rule(1)->20]
+-            22: []
+-            ])
+-            """
+-        ),
++        "Rule 0: root, FSM: CompactFSM(num_states=27, start=2, end=[3], edges=[\n0: [Rule(1)->1, [0-9]->0]\n1: [Rule(2)->3]\n2: ['x'->0]\n3: []\n])\nRule 1: b, FSM: CompactFSM(num_states=27, start=7, end=[5], edges=[\n4: [[\\x80-\\xbf]->6]\n5: []\n6: [[\\x80-\\xbf]->5]\n7: [[\\0-w]->5, 'x'->8, [{-\\x7f]->5, [\\xc2-\\xdf]->6, '\\xe0'->9, [\\xe1-\\xec]->4, '\\xed'->10, [\\xee-\\xef]->4, '\\xf0'->11, [\\xf1-\\xf3]->12, '\\xf4'->13]\n8: [[0-9]->8, 'y'->5]\n9: [[\\xa0-\\xbf]->6]\n10: [[\\x80-\\x9f]->6]\n11: [[\\x90-\\xbf]->4]\n12: [[\\x80-\\xbf]->4]\n13: [[\\x80-\\x8f]->4]\n])\nRule 2: c, FSM: CompactFSM(num_states=27, start=15, end=[18], edges=[\n14: ['e'->16]\n15: [Rule(5)->14]\n16: ['n'->17]\n17: ['d'->18]\n18: []\n])\nRule 3: c_1, FSM: CompactFSM(num_states=27, start=19, end=[19, 21], edges=[\n19: [Rule(1)->20]\n20: [Rule(4)->21]\n21: []\n])\nRule 4: c_2, FSM: CompactFSM(num_states=27, start=22, end=[22, 23], edges=[\n22: [Rule(1)->23]\n23: []\n])\nRule 5: c_3, FSM: CompactFSM(num_states=27, start=25, end=[26], edges=[\n24: [Rule(3)->26]\n25: [Rule(1)->24]\n26: []\n])\n",
+         id="nested-rule-references",
+     ),
+ ]
+--- a/tests/python/test_grammar_substring_macro.py
++++ b/tests/python/test_grammar_substring_macro.py
+@@ -240,7 +240,7 @@
+ 
+ 
+ ebnf_str__expected_error_regex__test_substring_macro_parser_errors = [
+-    ('root ::= Substring("a", foo=true)', "Substring\\(\\) does not accept named arguments"),
++    ('root ::= Substring("a", foo=true)', "Substring\\(\\) accepts only allow_empty and max_chunks named arguments"),
+     ("root ::= Substring(abc)", "Substring\\(\\) arguments must be strings"),
+     ('root ::= Substring("a", 1)', "Substring\\(\\) arguments must be strings"),
+ ]

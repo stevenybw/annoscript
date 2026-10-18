@@ -19,3 +19,35 @@ In Lev each source code point is one indivisible canonical JSON chunk. Count con
 The patch also sorts the cache's canonical-state lookup table once and uses binary search instead of scanning the complete mapping for every token-mask state. Canonical IDs and cache keys are unchanged. This avoids the quadratic lookup cost exposed by the bounded product automaton; it does not alter scheduling, prompts, or accepted output strings.
 
 Run `python -m unittest lev.test_generation_policy` for wire and worker integration tests, `python -m lev.p0_grammar_tests` and `python -m lev.substring_tests` in the pinned decoder environment. Performance acceptance must include the first cache-enabled compilation, not just cache-disabled compilation and subsequent hits. Do not deploy a candidate that fails the stated memory or 60-second gate.
+
+## Strict UTF-8 decoder build
+
+Apply `substring-nonempty.patch` first, then `utf8-strict.patch`, to the pinned
+upstream revision. The UTF-8 patch restricts Unicode ranges to RFC 3629 scalar
+encodings and shares continuation checks with the incremental character-class
+parser and strict string decoder. It preserves raw byte strings and partial
+byte tokens; valid characters can span tokens. Unicode literal encoding rejects
+surrogates and values outside U+0000..U+10FFFF. JSON escape semantics remain in
+Lev's lexical grammar, including complete surrogate pairs.
+
+The current Lev grammar uses advisory character lengths: complete free-string
+lexical FSMs have no character counter, and extraction uses nonempty Substring
+without `max_chunks`. Count, nonempty and source constraints remain hard. The
+UTF-8 patch adds no per-token vocabulary scan and no independent repeated
+`json-char` rule.
+
+`pin.json` binds the ordered patch hashes, wheel and native library. Do not reuse
+compiled grammar caches from another build. Record the complete build digest in
+`generation.structured_output_revision` before starting new tasks; old tasks and
+journals must not be resumed against this release.
+
+Run `tests/utf8_regression.py --tokenizer <pinned-model-directory> --lev-root
+<lev-repository> --output <new-result.json>` in the pinned decoder environment.
+It checks the actual Qwen vocabulary at UTF-8 boundary states and uses Python's
+strict full-buffer decoding errors as an independent prefix oracle. An
+incremental decoder with `final=False` alone is insufficient: it can buffer an
+already invalid surrogate prefix. `--expect-vulnerable` is for preserving a
+baseline failure, never for accepting a candidate build. The C++ patch tests
+all Unicode scalars, the non-FSM path, rollback, raw-byte compatibility and
+invalid scalar literals. Performance must be measured against the advisory
+length grammar with the same token sequence, tokenizer and CPU settings.

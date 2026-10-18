@@ -25,7 +25,7 @@ def wire(items):
 class SubstringGrammarTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        assert version('xgrammar') in ('0.2.5+lev.substring1','0.2.5+lev.substring2','0.2.5+lev.substring2.1','0.2.5+lev.substring2.2')
+        assert version('xgrammar') in ('0.2.5+lev.substring1','0.2.5+lev.substring2','0.2.5+lev.substring2.1','0.2.5+lev.substring2.2','0.2.5+lev.substring2.3')
 
     def test_nonempty_macro_and_serialization(self):
         for chunks in [('a','b'),('a','','b'),('','',''),()]:

@@ -1,10 +1,12 @@
 {
   "repository": "https://github.com/mlc-ai/xgrammar",
   "revision": "3210db25b1d144a26904dce5935102f38e014902",
-  "version": "0.2.5+lev.substring2.2",
+  "version": "0.2.5+lev.substring2.3",
   "apache-tvm-ffi": "0.1.10",
   "vllm": "0.26.0",
   "vllm_revision": "568afb3a13806beb53bb2e6bd518269357b237c0",
   "patch_sha256": "7a5843df50f201729940f5eb7280d999348680ff9ef778dad23600c6f88b70ef",
-  "wheel_sha256": "4a185d4c7eacaea90b72f8ef69219a0d53194de9d2117b4f8e00734e1882a9a4"
+  "wheel_sha256": "e08864494658e4d35248f123b2655624f8751f7d748be8ce5a12b3157e3116e1",
+  "utf8_patch_sha256": "8d3c060cde25638e7b2e017dde6f81bc89af8b19652ddc7e1d94295cd0da2cc4",
+  "native_sha256": "26dbc1c7fbd7435ffd88cd961f538338a04733d9577cc5a829423dbe0e3fd76c"
 }
