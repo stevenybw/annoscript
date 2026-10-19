@@ -373,7 +373,7 @@ class LevRuntime:
                  loop_window=32, local_task_budget=1024, trace=False,
                  max_llm_batch_calls=8, max_llm_batch_input_bytes=262144,
                  max_llm_batch_output_tokens=16384, llm_batch_default_tokens=1024,
-                 llm_batch_repair_attempts=1):
+                 llm_batch_repair_attempts=1, request_slots=None):
         for name, value in (("max_active_runs", max_active_runs), ("max_decision_inflight", max_decision_inflight),
                             ("max_llm_inflight", max_llm_inflight), ("max_batch_questions", max_batch_questions),
                             ("loop_window", loop_window), ("local_task_budget", local_task_budget)):
@@ -392,6 +392,9 @@ class LevRuntime:
         self._events = deque()
         self._sequence = 0
         self.closed = False
+        self.request_slots = request_slots
+        self._slot_leases = {}
+        self._slot_wait_started = {}
 
     def _bind(self):
         loop = asyncio.get_running_loop()
@@ -446,7 +449,13 @@ class LevRuntime:
         run.done = True
         run.stream.runs.discard(run)
         self._runs.pop(run.id, None)
-        if cancel:
+        if self.request_slots is not None:
+            self.request_slots.cancel((self, run.id))
+            for kind in ("decision", "llm"):
+                since = self._slot_wait_started.pop((run.id, kind), None)
+                if since is not None:
+                    self._record("slot_wait_cancelled", run, backend=kind, wait_seconds=monotonic() - since)
+        if cancel and self.request_slots is None:
             for future, (owner, _, _, _) in list(self._inflight.items()):
                 if owner is run:
                     future.cancel()
@@ -491,7 +500,7 @@ class LevRuntime:
                     self._record("run_started", run, entry=stream.plan.entry)
             available = [s for s in available if s.pending]
 
-    def _send(self, run, requests, kind, batch_plan=None):
+    def _send(self, run, requests, kind, batch_plan=None, slot_release=None):
         calls = [r.call for r in requests]
         for request in requests:
             request.status = "inflight"
@@ -507,7 +516,9 @@ class LevRuntime:
         if kind == "decision":
             coroutine = backend.infer_batch(run.context, calls)
         elif batch_plan is not None:
-            coroutine = backend.infer_batch(run.context, calls, max_tokens=batch_plan.max_tokens)
+            prepared = ({"prepared": batch_plan.prepared} if
+                        getattr(backend, "supports_prepared_batch", False) is True else {})
+            coroutine = backend.infer_batch(run.context, calls, max_tokens=batch_plan.max_tokens, **prepared)
         elif requests[0].repair_attempt:
             resolve = getattr(backend, "resolve_token_budget", None)
             repair_budget = (resolve(calls[0], self.llm_batch_default_tokens) if resolve else
@@ -518,9 +529,16 @@ class LevRuntime:
             coroutine = backend.infer(run.context, calls[0])
         future = asyncio.create_task(coroutine)
         self._inflight[future] = run, requests, kind, batch_id
+        if slot_release is not None:
+            self._slot_leases[future] = slot_release
         future.add_done_callback(self._completed)
 
     def _completed(self, future):
+        release = self._slot_leases.pop(future, None)
+        if release is not None:
+            release()
+            run, _, kind, _ = self._inflight[future]
+            self._record("slot_released", run, backend=kind)
         self._events.append(future)
         self._wake.set()
 
@@ -605,6 +623,19 @@ class LevRuntime:
                 for kind, limit in (("decision", self.max_decision_inflight), ("llm", self.max_llm_inflight)):
                     eligible = [r for r in queued if (r.call.operation in DECISION_OPERATIONS) == (kind == "decision") and r.status == "queued"]
                     if eligible and counts[kind] < limit:
+                        release = None
+                        if self.request_slots is not None:
+                            owner = (self, run.id)
+                            release = self.request_slots.acquire(kind, owner, self._wake.set)
+                            key = (run.id, kind)
+                            if release is None:
+                                if key not in self._slot_wait_started:
+                                    self._slot_wait_started[key] = monotonic()
+                                    self._record("slot_wait", run, backend=kind)
+                                continue
+                            since = self._slot_wait_started.pop(key, None)
+                            self._record("slot_acquired", run, backend=kind,
+                                         wait_seconds=0 if since is None else monotonic() - since)
                         plan = None
                         if kind == "decision":
                             selected = eligible[:self.max_batch_questions]
@@ -612,18 +643,32 @@ class LevRuntime:
                             repairs = [r for r in eligible if r.repair_attempt]
                             if not repairs and any(r.status == "queued" and r.repair_attempt
                                     for other in self._runs.values() for r in other.cache.values()):
+                                if release is not None:
+                                    release()
                                 continue
                             selected = (repairs or eligible)[:1]
                             if (not repairs and self.max_llm_batch_calls > 1
                                     and getattr(self.llm_backend, "supports_llm_batch", False) is True):
-                                plan = self.llm_backend.plan_batch(run.context, [r.call for r in eligible],
-                                    max_calls=self.max_llm_batch_calls, max_input_bytes=self.max_llm_batch_input_bytes,
-                                    max_output_tokens=self.max_llm_batch_output_tokens, default_tokens=self.llm_batch_default_tokens)
+                                try:
+                                    plan = self.llm_backend.plan_batch(run.context, [r.call for r in eligible],
+                                        max_calls=self.max_llm_batch_calls, max_input_bytes=self.max_llm_batch_input_bytes,
+                                        max_output_tokens=self.max_llm_batch_output_tokens, default_tokens=self.llm_batch_default_tokens)
+                                except BaseException:
+                                    if release is not None:
+                                        release()
+                                    raise
                                 if plan is not None:
                                     selected = eligible[:len(plan.calls)]
                                     if tuple(r.call for r in selected) != plan.calls or len(selected) < 2:
+                                        if release is not None:
+                                            release()
                                         raise ValueError("backend selected an invalid batch prefix")
-                        self._send(run, selected, kind, plan)
+                        try:
+                            self._send(run, selected, kind, plan, slot_release=release)
+                        except BaseException:
+                            if release is not None:
+                                release()
+                            raise
                         self._runs.pop(run.id)
                         self._runs[run.id] = run
                         counts[kind] += 1
@@ -646,7 +691,9 @@ class LevRuntime:
                 if progress:
                     await asyncio.sleep(0)
                 else:
-                    if self._runs and not self._inflight:
+                    waiting_for_slots = (self.request_slots is not None and any(
+                        self.request_slots.waiting((self, run.id)) for run in self._runs.values()))
+                    if self._runs and not self._inflight and not waiting_for_slots:
                         for run in list(self._runs.values()):
                             self._fail_run(run, ValueError("plan cannot make progress"))
                         continue
@@ -668,11 +715,22 @@ class LevRuntime:
         if self._driver is not None:
             self._driver.cancel()
         pending = list(self._inflight)
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, *([self._driver] if self._driver else []), return_exceptions=True)
+        if self.request_slots is None:
+            for task in pending:
+                task.cancel()
+        # Shared slots represent actual work, including orphaned responses.
+        # Preserve the transport's existing timeout and accounting on cancellation.
+        draining = asyncio.gather(*pending, *([self._driver] if self._driver else []), return_exceptions=True)
+        cancelled = False
+        try:
+            await asyncio.shield(draining)
+        except asyncio.CancelledError:
+            await draining
+            cancelled = True
         self._receive()
         backends = [self.decision_backend]
         if self.llm_backend is not self.decision_backend:
             backends.append(self.llm_backend)
         await asyncio.gather(*(backend.aclose() for backend in backends))
+        if cancelled:
+            raise asyncio.CancelledError()

@@ -8,6 +8,8 @@ import uuid
 
 from lev.backends.base import HTTPBackend
 from lev.server.metrics import RequestMeter
+from lev.server._plan_cache import PlanCache
+from lev._dispatch_pool import RequestSlots
 
 from lev._client_common import Result, ResultError
 from lev.backends import BackendFatalError
@@ -31,14 +33,19 @@ def backends(manifest):
     return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout),
             LLMAPIBackend(g["base_url"], generation_token, g["model"], timeout=timeout,
                           profile=g["profile"], extract_mode=g.get("extract_mode", "validated"),
+                          source_layout=g.get("source_layout"),
+                          batch_rule_dedup=g.get("batch_rule_dedup", False),
                           disable_thinking=manifest["disable_thinking"], request_policy=g.get("request_policy"),
                           assumed_avg_num_tokens_per_char=g.get("assumed_avg_num_tokens_per_char", 2)))
 
 
 class ObservedBackend:
-    def __init__(self, backend, failures, owned, *, dispatch_allowed=None):
+    def __init__(self, backend, failures, owned, *, dispatch_allowed=None, on_failure=None):
         self.backend, self.failures, self.owned = backend, failures, owned
         self.dispatch_allowed = dispatch_allowed
+        self.on_failure = on_failure
+        if isinstance(backend, HTTPBackend):
+            backend._dispatch_guard = self._check_dispatch
 
     def _check_dispatch(self):
         if not self.owned():
@@ -53,6 +60,10 @@ class ObservedBackend:
     def plan_batch(self, *args, **kwargs):
         return self.backend.plan_batch(*args, **kwargs)
 
+    @property
+    def supports_prepared_batch(self):
+        return getattr(self.backend, "supports_prepared_batch", False) is True
+
     def resolve_token_budget(self, call, fallback):
         resolve = getattr(self.backend, "resolve_token_budget", None)
         return resolve(call, fallback) if resolve else (call.arguments.get("max_num_tokens") or fallback)
@@ -63,6 +74,8 @@ class ObservedBackend:
             return await self.backend.infer(*args, **kwargs)
         except Exception as exc:
             self.failures.append(exc)
+            if self.on_failure is not None:
+                self.on_failure(exc)
             raise
 
     async def infer_batch(self, *args, **kwargs):
@@ -71,6 +84,8 @@ class ObservedBackend:
             return await self.backend.infer_batch(*args, **kwargs)
         except Exception as exc:
             self.failures.append(exc)
+            if self.on_failure is not None:
+                self.on_failure(exc)
             raise
 
     async def aclose(self):
@@ -95,7 +110,7 @@ def classification(code, metadata, *, retry_unknown_outcomes=True):
 class Worker:
     def __init__(self, store, releases, *, backend_factory=backends, concurrency=8,
                  poll_interval=0.2, random_source=random.random, request_observer=None,
-                 diagnostic_observer=None):
+                 diagnostic_observer=None, model_request_limits=None):
         if type(concurrency) is not int or concurrency < 1:
             raise ValueError("worker concurrency must be positive")
         self.store, self.releases, self.backend_factory = store, releases, backend_factory
@@ -103,6 +118,11 @@ class Worker:
         self.request_observer = request_observer
         self.diagnostic_observer = diagnostic_observer
         self.id = uuid.uuid4().hex
+        self.plan_cache = PlanCache()
+        if model_request_limits is not None and (type(model_request_limits) is not dict
+                or set(model_request_limits) != {"generation", "decision"}):
+            raise ValueError("model_request_limits requires generation and decision")
+        self.request_slots = RequestSlots(**model_request_limits) if model_request_limits is not None else None
 
     async def execute(self, claim):
         manifest = self.releases.manifests[claim["release_id"]]
@@ -117,10 +137,20 @@ class Worker:
                             "attempt": claim["attempt"], "stage": stage, **event})
                     except Exception:
                         raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
-            program = Program.from_json(encode(claim["ir"]).decode())
-            if manifest["server_optimize"]:
-                program = optimize_program(program)
-            plan = lower_to_plan(program)
+            def failed(exc):
+                code, metadata = getattr(exc, "code", "execution_failed"), getattr(exc, "metadata", {})
+                if classification(code, metadata, retry_unknown_outcomes=manifest["policy"].get("retry_unknown_outcomes", True)) == "pause":
+                    self.store.pause_dispatch(claim, {"code": code, "message": str(exc)})
+            if self.request_slots is not None:
+                diagnose("scheduling", {"event": "resource_limits", "active_inputs": self.concurrency,
+                    "limits": self.request_slots.limits, "algorithm": "ready_at_admission_fifo_v1"})
+            def compile_plan(encoded):
+                program = Program.from_json(encoded.decode())
+                if manifest["server_optimize"]:
+                    program = optimize_program(program)
+                return lower_to_plan(program)
+            plan, preparation = await self.plan_cache.get(claim["release_id"], claim["ir"], compile_plan)
+            diagnose("preparation", preparation)
             try:
                 d, g = self.backend_factory(manifest)
             except ValueError:
@@ -137,12 +167,16 @@ class Worker:
                 if self.diagnostic_observer is not None:
                     g.diagnostic_observer = lambda event: diagnose("generation", event)
             decision = ObservedBackend(d, failures, lambda: self.store.renew(claim),
-                                       dispatch_allowed=lambda: self.store.can_dispatch(claim))
+                                       dispatch_allowed=lambda: self.store.can_dispatch(claim),
+                                       on_failure=failed if self.request_slots is not None else None)
             generation = decision if d is g else ObservedBackend(g, failures, lambda: self.store.renew(claim),
-                                                                 dispatch_allowed=lambda: self.store.can_dispatch(claim))
-            async with LevRuntime(decision, generation, trace=self.diagnostic_observer is not None, **manifest["runtime"]) as runtime:
-                async with await runtime.submit(plan, [RunInput(claim["index"], claim["state"])], mode=claim["mode"]) as stream:
-                    try:
+                                                                 dispatch_allowed=lambda: self.store.can_dispatch(claim),
+                                                                 on_failure=failed if self.request_slots is not None else None)
+            runtime = LevRuntime(decision, generation, trace=self.diagnostic_observer is not None,
+                                 request_slots=self.request_slots, **manifest["runtime"])
+            try:
+                async with runtime:
+                    async with await runtime.submit(plan, [RunInput(claim["index"], claim["state"])], mode=claim["mode"]) as stream:
                         result = await anext(stream)
                         # Verify one and only one outcome for this isolated input.
                         try:
@@ -150,10 +184,10 @@ class Worker:
                         except StopAsyncIteration:
                             return result
                         raise RuntimeError("multiple results for an input attempt")
-                    finally:
-                        if self.diagnostic_observer is not None:
-                            diagnose("runtime", {"event": "trace", "trace": runtime.trace,
-                                               "plan": plan.to_dict()})
+            finally:
+                if self.diagnostic_observer is not None:
+                    diagnose("runtime", {"event": "trace", "trace": runtime.trace,
+                                         "plan": plan.to_dict()})
 
         task = asyncio.create_task(run())
 
@@ -208,6 +242,7 @@ class Worker:
 
     async def run(self, *, stop=None):
         active = set()
+        stop_waiter = asyncio.create_task(stop.wait()) if stop is not None else None
         try:
             while stop is None or not stop.is_set():
                 self.store.maintain()
@@ -221,8 +256,19 @@ class Worker:
                     if claim is None:
                         break
                     active.add(asyncio.create_task(self.execute(claim)))
-                await asyncio.sleep(self.poll_interval)
+                waiting = active | ({stop_waiter} if stop_waiter is not None else set())
+                if waiting:
+                    await asyncio.wait(waiting, timeout=self.poll_interval, return_when=asyncio.FIRST_COMPLETED)
+                else:
+                    await asyncio.sleep(self.poll_interval)
         finally:
             for task in active:
                 task.cancel()
             await asyncio.gather(*active, return_exceptions=True)
+            if stop_waiter is not None:
+                stop_waiter.cancel()
+                await asyncio.gather(stop_waiter, return_exceptions=True)
+            await self.aclose()
+
+    async def aclose(self):
+        await self.plan_cache.aclose()

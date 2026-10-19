@@ -368,6 +368,14 @@ class Store(MetricStore):
             owned = self._owned(db, claim)
             return owned is not None and owned[0]["state"] in ("queued", "running")
 
+    def pause_dispatch(self, claim, error):
+        """Stop admission immediately, retaining leases for in-flight accounting."""
+        with self._tx() as db:
+            if self._owned(db, claim) is None:
+                return False
+            self._pause(db, claim["job_id"], error)
+            return True
+
     def finish(self, claim, result, *, elapsed_seconds=None):
         if result.index != claim["index"]:
             raise ValueError("attempt result index mismatch")

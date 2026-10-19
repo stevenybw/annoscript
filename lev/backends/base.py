@@ -76,10 +76,20 @@ class BatchResult:
 
 
 @dataclass(frozen=True)
+class PreparedLLMRequest:
+    """Internal, attempt-local immutable transport and preflight snapshot."""
+    binding: str
+    payload: object
+    body: bytes
+    evidence: object
+
+
+@dataclass(frozen=True)
 class LLMBatchPlan:
     calls: tuple
     max_tokens: int
     input_bytes: int
+    prepared: PreparedLLMRequest | None = field(default=None, repr=False, compare=False)
 
 
 def encode_payload(payload):
@@ -194,11 +204,15 @@ class HTTPBackend:
             except Exception:
                 raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
 
-    async def post(self, url, payload, *, logical_calls=None, diagnostic_context=None):
+    async def post(self, url, payload, *, logical_calls=None, diagnostic_context=None, _encoded_body=None):
+        guard = getattr(self, "_dispatch_guard", None)
+        if guard is not None:
+            guard()
+        body_args = {"_encoded_body": _encoded_body} if _encoded_body is not None else {}
         meter = getattr(self, "_request_meter", None)
         observing = self.diagnostic_observer is not None
         if meter is None and not observing:
-            return await self._post(url, payload)
+            return await self._post(url, payload, **body_args)
         questions = logical_calls if logical_calls is not None else len(payload["questions"]) if "questions" in payload else 1
         identity = await meter.start(questions) if meter is not None else uuid.uuid4().hex
         timing, metadata = {}, {}
@@ -210,11 +224,11 @@ class HTTPBackend:
                 parents = {self._diagnostic_calls[c["id"]] for c in calls
                            if context.get("repair") and c["id"] in self._diagnostic_calls}
                 self._diagnose({"event": "request", "request_id": identity, "started_unix": time.time(),
-                                "body": encode_payload(payload), "questions": questions,
+                                "body": _encoded_body if _encoded_body is not None else encode_payload(payload), "questions": questions,
                                 "repair_parent_request_ids": sorted(parents), **context})
                 for call in calls:
                     self._diagnostic_calls[call["id"]] = identity
-            data, metadata = await self._post(url, payload, _timing=timing, _diagnostic=diagnostic)
+            data, metadata = await self._post(url, payload, _timing=timing, _diagnostic=diagnostic, **body_args)
             if observing:
                 metadata["request_id"] = identity
             return data, metadata
@@ -239,19 +253,22 @@ class HTTPBackend:
             if observing and diagnostic.get("write_error"):
                 raise BackendFatalError("diagnostic persistence failed", code="diagnostics_failed") from None
 
-    async def _post(self, url, payload, *, _timing=None, _diagnostic=None):
+    async def _post(self, url, payload, *, _timing=None, _diagnostic=None, _encoded_body=None):
         import asyncio
         import httpx
         if self._client is None:
             auth = self._token if self._token.lower().startswith("bearer ") else "Bearer " + self._token
             self._client = httpx.AsyncClient(headers={"Authorization": auth},
                 timeout=self.timeout, transport=self._transport or httpx.AsyncHTTPTransport(retries=0))
+        guard = getattr(self, "_dispatch_guard", None)
+        if guard is not None:
+            guard()
         try:
             clock = getattr(getattr(self, "_request_meter", None), "clock", time.monotonic)
             started = clock() if _timing is not None else None
             try:
                 async with asyncio.timeout(self.timeout):
-                    response = await self._client.post(url, content=encode_payload(payload),
+                    response = await self._client.post(url, content=_encoded_body if _encoded_body is not None else encode_payload(payload),
                                                        headers={"Content-Type": "application/json"})
                 if _timing is not None:
                     _timing["http_status"] = response.status_code
