@@ -117,28 +117,32 @@ class Lev(ABC):
         self,
         instructions: str,
         *,
-        source: str | None = None,
+        source_field: str | None = None,
         min_items: int = 0,
         max_items: int,
         max_length_per_item: int,
+        max_num_tokens: int | None = None,
     ) -> ExtractResponse:
         """Extract verbatim passages using this instance's state and model.
 
-        ``source`` is the only text from which items may be extracted. If it is
-        omitted, use ``self.state`` when the state is a string; structured states
-        require an explicit source, such as ``source=self.state["text"]``.
+        ``source_field`` names a top-level string field in an object state,
+        such as ``source_field="text"``. It is a literal key, not a nested path.
+        String states require ``source_field=None`` and are extracted directly.
+        Object states require an explicit field; list states are unsupported.
         Other state fields may provide context, but are not extraction sources.
 
         Each item must be a nonempty, contiguous substring of the source, without
         rewriting, normalization, or concatenation of separate passages. The
         number of items must satisfy the inclusive ``min_items`` / ``max_items``
         bounds. Required ``max_length_per_item`` is a suggested Unicode code-point
-        length, measured by Python's ``len``, and contributes to the token budget.
+        length, measured by Python's ``len``, and contributes to the token budget
+        unless a positive ``max_num_tokens`` overrides it (including format overhead).
+        In a batch this budget contributes to the shared limit.
         Exceeding the suggestion does not invalidate an otherwise valid item.
         Return an empty list when nothing matches and ``min_items`` is zero.
 
-        Implementations must raise ``ValueError`` for a missing source with a
-        structured state, negative item bounds, an inverted item range, or a
+        Implementations must raise ``ValueError`` for a missing, invalid or
+        non-string field, negative item bounds, an inverted item range, or a
         nonpositive ``max_length_per_item``. If extraction cannot satisfy the
         constraints, report failure rather than inventing items or returning a
         successful result that violates the bounds. Matching the source does

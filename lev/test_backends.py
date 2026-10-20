@@ -48,22 +48,22 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
             await backend.aclose()
 
     async def test_llm_mapping_limits_extraction_source_and_thinking(self):
-        context = InferenceContext({"text": "原文甲", "other": "背景乙"}, "共享政策")
+        context = InferenceContext({"text": "原文甲", "other": "独立来源广州"}, "共享政策")
         for operation, args, options, answer in (
             ("generate", ("简述",), {"min_length": 1, "max_length": 2, "max_num_tokens": 16}, "中文"),
             ("generate_list", ("列出",), {"min_items": 1, "max_items": 8, "max_length_per_item": 2}, '{"items":["中文"]}'),
-            ("extract", ("抽取",), {"source": "独立来源广州", "min_items": 1, "max_items": 8, "max_length_per_item": 58}, '{"items":["广州"]}'),
+            ("extract", ("抽取",), {"source_field": "other", "min_items": 1, "max_items": 8, "max_length_per_item": 58}, '{"items":["广州"]}'),
         ):
             with self.subTest(operation=operation):
                 async def handle(request):
                     body = json.loads(request.content)
                     self.assertEqual(str(request.url), "https://llm.invalid/v1/chat/completions")
                     self.assertEqual(body["thinking"], {"type": "disabled"})
-                    self.assertEqual(body["messages"][1], {"role": "system", "content": "共享政策"})
+                    self.assertTrue(body["messages"][0]["content"].startswith("共享政策\n"))
                     payload = json.loads(body["messages"][-1]["content"])
-                    self.assertEqual(payload["state"], {"text": "原文甲", "other": "背景乙"})
+                    self.assertEqual(payload["state"], {"text": "原文甲", "other": "独立来源广州"})
                     if operation == "extract":
-                        self.assertEqual(payload["task"]["source"], "独立来源广州")
+                        self.assertEqual(payload["task"]["source_field"], "other")
                     if operation == "generate":
                         self.assertNotIn("response_format", body)
                         self.assertEqual(body["max_tokens"], 16)
@@ -146,7 +146,7 @@ class ContractTests(unittest.TestCase):
         for operation, args, options in (
             ("generate", (1,), {}), ("generate", ("x",), {"max_num_tokens": 0}),
             ("generate", ("x",), {"min_length": 3, "max_length": 2}),
-            ("extract", ("x",), {}), ("extract", ("x",), {"source": "a", "max_length_per_item": 0}),
+            ("extract", ("x",), {}), ("extract", ("x",), {"source_field": "text", "max_length_per_item": 0}),
             ("choice", ("x", {}), {}), ("score", ("x", []), {}),
         ):
             with self.subTest(operation=operation, options=options), self.assertRaises((ValueError, TypeError)):

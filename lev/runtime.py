@@ -557,8 +557,7 @@ class LevRuntime:
             request.repair_attempt += 1
             request.repair_parent = batch
             request.repair_feedback = (
-                "The answer was missing, truncated, or violated the required format or task constraints. "
-                "Check structure, item count, nonempty requirements and the exact extraction source; character lengths are advisory"
+                "回答缺失、被截断或不符合任务要求。请检查结构、数量、非空要求和原文来源；字符长度为建议"
             )
             request.status = "queued"
         return True

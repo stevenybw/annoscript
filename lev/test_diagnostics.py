@@ -52,7 +52,7 @@ class WorkerTests(unittest.TestCase):
    if llm_calls(body)[0]:
     v=json.loads(value);del v['answers'][next(iter(v['answers']))];value=json.dumps(v)
    return completion(value)
-  job=self.submit('batch',states=('hello',),program=mixed_generation)
+  job=self.submit('batch',states=('广州与北京',),program=mixed_generation)
   asyncio.run(self.worker(handler,request_observer=audit.append,diagnostic_observer=raw.append).execute(self.store.claim('w',self.releases)))
   self.assertEqual(self.store.status('alice',job['job_id'])['counts']['success'],1)
   rr=[e for e in raw if e['event']=='request'];self.assertEqual(len(rr),2)

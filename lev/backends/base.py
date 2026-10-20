@@ -57,6 +57,8 @@ class InferenceCall:
     id: str
     operation: str
     arguments: Mapping
+    # Resolved at normalization, never included in public arguments or messages.
+    extraction_source: str | None = field(default=None, repr=False)
 
     def __post_init__(self):
         object.__setattr__(self, "arguments", freeze(snapshot(dict(self.arguments))))
@@ -105,8 +107,29 @@ def validate_batch_options(options):
 
 
 def normalize_call(call_id, operation, args, kwargs, context):
+    values = normalize_arguments(operation, args, kwargs)
+    source = None
+    if operation == "extract":
+        name = values["source_field"]
+        if type(context.state) is str:
+            if name is not None:
+                raise ValueError("string state requires source_field=None")
+            source = context.state
+        else:
+            if not isinstance(context.state, Mapping) or name is None:
+                raise ValueError("object state requires an explicit extract source_field")
+            if name not in context.state or type(context.state[name]) is not str:
+                raise ValueError("extract source_field must name an existing string field")
+            source = context.state[name]
+    return InferenceCall(call_id, operation, values, source)
+
+
+def normalize_arguments(operation, args, kwargs):
+    """Validate public arguments without manufacturing a context for budget checks."""
     if operation not in RESPONSE_TYPES:
         raise ValueError("unsupported inference operation")
+    if operation == "extract" and "source" in kwargs:
+        raise ValueError("extract source was removed; use source_field with state")
     bound = inspect.signature(getattr(Lev, operation)).bind(None, *args, **kwargs)
     bound.apply_defaults()
     values = {k: v for k, v in bound.arguments.items() if k != "self"}
@@ -135,13 +158,9 @@ def normalize_call(call_id, operation, args, kwargs, context):
         if low in values and values.get(high) is not None and values[low] > values[high]:
             raise ValueError(f"{low} exceeds {high}")
     if operation == "extract":
-        if values["source"] is None:
-            if type(context.state) is not str:
-                raise ValueError("extract requires source for structured state")
-            values["source"] = context.state
-        if type(values["source"]) is not str:
-            raise ValueError("extract source must be a string")
-    return InferenceCall(call_id, operation, values)
+        if values["source_field"] is not None and type(values["source_field"]) is not str:
+            raise ValueError("extract source_field must be a string or None")
+    return values
 
 
 def validate_response(call, response):
@@ -174,7 +193,8 @@ def validate_response(call, response):
         require(length(response.items, a["min_items"], a["max_items"]), "items violate count limits")
         for item in response.items:
             if op == "extract":
-                require(bool(item) and item in a["source"], "extraction is not a nonempty verbatim source substring")
+                require(type(call.extraction_source) is str and bool(item) and item in call.extraction_source,
+                        "extraction is not a nonempty verbatim source substring")
             else:
                 require(not a["min_length_per_item"] or bool(item), "generated item violates nonempty requirement")
     return response

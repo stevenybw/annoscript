@@ -95,8 +95,10 @@ def effective_budget(call, assumed_avg_num_tokens_per_char=2, override=None):
     ratio = validate_token_ratio(assumed_avg_num_tokens_per_char)
     a = call.arguments
     # Direct backend callers also pass through the public argument validator.
-    from .base import normalize_call, InferenceContext
-    normalize_call(call.id, call.operation, (), dict(a), InferenceContext(a.get("source", "")))
+    from .base import normalize_arguments
+    normalize_arguments(call.operation, (), dict(a))
+    if call.operation == "extract" and type(call.extraction_source) is not str:
+        raise ValueError("extract call requires a normalized source_field binding")
     explicit = a.get("max_num_tokens")
     if explicit is not None:
         budget = explicit

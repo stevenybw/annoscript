@@ -27,7 +27,7 @@ class LayoutTests(unittest.IsolatedAsyncioTestCase):
     async def test_single_batch_repair_and_empty_policy_keep_contents_and_budgets(self):
         for policy in (None, '', '共同规则'):
             context = InferenceContext({'text':'广州'}, policy)
-            calls = [normalize_call('a','extract',('地点',),{'source':'广州', 'max_items': 8, 'max_length_per_item': 58},context),
+            calls = [normalize_call('a','extract',('地点',),{'source_field':'text', 'max_items': 8, 'max_length_per_item': 58},context),
                      normalize_call('b','generate_list',('维度',),{'max_num_tokens':32, 'max_items': 8, 'max_length_per_item': 58},context)]
             for mode in ('single','repair','batch'):
                 bodies = {}
@@ -43,27 +43,17 @@ class LayoutTests(unittest.IsolatedAsyncioTestCase):
                     finally:await backend.aclose()
                 legacy,qwen=bodies['legacy'],bodies['qwen_vllm']
                 self.assertEqual([m['role'] for m in qwen['messages']],['system','user'])
-                # The engineering source-reference envelope adds only its
-                # resolution contract; business policy and logical arguments
-                # remain unchanged across profiles.
-                contract=legacy['messages'][0]['content']
-                qcontract=qwen['messages'][0]['content']
-                if policy is not None:
-                    self.assertTrue(qcontract.endswith('\n\n'+policy))
-                    qcontract=qcontract[:-(len(policy)+2)]
-                if mode=='repair':
-                    prefix,feedback=contract.split(' A previous batch answer',1)
-                    self.assertTrue(qcontract.startswith(prefix))
-                    self.assertTrue(qcontract.endswith(' A previous batch answer'+feedback))
-                else:self.assertTrue(qcontract.startswith(contract))
-                self.assertIn('source_ref',qcontract)
+                self.assertEqual(legacy['messages'],qwen['messages'])
+                self.assertIn('source_field',qwen['messages'][0]['content'])
+                if policy:
+                    self.assertTrue(qwen['messages'][0]['content'].startswith(policy+'\n'))
                 from lev._test_evaluation_http import llm_calls
                 a,b=llm_calls(legacy),llm_calls(qwen)
                 self.assertEqual(a[0],b[0])
                 self.assertEqual([(c.state,x.operation,x.arguments) for c,x in a[1]],
                                  [(c.state,x.operation,x.arguments) for c,x in b[1]])
                 self.assertEqual(qwen.get('max_tokens'),legacy.get('max_tokens'))
-                self.assertEqual(len(legacy['messages']),2 if policy is None else 3)
+                self.assertEqual(len(legacy['messages']),2)
 
 
 class ProtocolTests(StoreTests):

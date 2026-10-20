@@ -10,7 +10,7 @@ from .decision import DecisionAPIBackend
 from .llm import LLMAPIBackend
 
 
-def backends_from_env(*, env_file=None, disable_thinking=True, generation_profile=None, extract_mode=None, source_layout=None, batch_rule_dedup=False, request_policy=None, assumed_avg_num_tokens_per_char=2, timeout=60.0):
+def backends_from_env(*, env_file=None, disable_thinking=True, generation_profile=None, extract_mode=None, batch_rule_dedup=False, request_policy=None, assumed_avg_num_tokens_per_char=2, timeout=60.0):
     values = {}
     if env_file is not None:
         for number, line in enumerate(Path(env_file).read_text(encoding="utf-8").splitlines(), 1):
@@ -39,4 +39,4 @@ def backends_from_env(*, env_file=None, disable_thinking=True, generation_profil
                 raise ValueError(f"missing environment variable {name}")
         return [values[name] for name in names]
     return (DecisionAPIBackend(*config("DECISION"), timeout=timeout),
-            LLMAPIBackend(*config("GENERATE"), timeout=timeout, profile=profile, extract_mode=mode, source_layout=source_layout, batch_rule_dedup=batch_rule_dedup, disable_thinking=disable_thinking, request_policy=request_policy, assumed_avg_num_tokens_per_char=assumed_avg_num_tokens_per_char))
+            LLMAPIBackend(*config("GENERATE"), timeout=timeout, profile=profile, extract_mode=mode, batch_rule_dedup=batch_rule_dedup, disable_thinking=disable_thinking, request_policy=request_policy, assumed_avg_num_tokens_per_char=assumed_avg_num_tokens_per_char))

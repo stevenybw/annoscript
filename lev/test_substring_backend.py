@@ -61,8 +61,8 @@ class SubstringBackendTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manifest(cfg)['generation']['extract_mode'],'substring_chars')
 
     async def test_mixed_batch_payload_and_source_deduplication(self):
-        ctx=InferenceContext({'unrelated':'不能抽取'})
-        calls=[normalize_call(str(i),op,('任务',),({'source':src,'max_items':8,'max_length_per_item':58} if op=='extract' else {'max_length':512} if op=='generate' else {'max_items':8,'max_length_per_item':58}),ctx)
+        ctx=InferenceContext({'unrelated':'不能抽取','甲乙':'甲乙','丙丁':'丙丁'})
+        calls=[normalize_call(str(i),op,('任务',),({'source_field':src,'max_items':8,'max_length_per_item':58} if op=='extract' else {'max_length':512} if op=='generate' else {'max_items':8,'max_length_per_item':58}),ctx)
                for i,(op,src) in enumerate([('extract','甲乙'),('extract','丙丁'),
                                             ('extract','甲乙'),('generate',None),('generate_list',None)])]
         a=LLMAPIBackend('https://test.invalid','fixture','qwen',profile='qwen_vllm')

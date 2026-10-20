@@ -33,7 +33,6 @@ def backends(manifest):
     return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout),
             LLMAPIBackend(g["base_url"], generation_token, g["model"], timeout=timeout,
                           profile=g["profile"], extract_mode=g.get("extract_mode", "validated"),
-                          source_layout=g.get("source_layout"),
                           batch_rule_dedup=g.get("batch_rule_dedup", False),
                           disable_thinking=manifest["disable_thinking"], request_policy=g.get("request_policy"),
                           assumed_avg_num_tokens_per_char=g.get("assumed_avg_num_tokens_per_char", 2)))

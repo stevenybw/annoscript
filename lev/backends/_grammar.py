@@ -71,7 +71,7 @@ def batch_grammar(calls, *, extract_mode="validated"):
         prefix += ':{"type":' + json.dumps(call.operation) + ',"' + field + '":'
         value_rule = "string" if field == "text" else "items"
         if call.operation == "extract" and extract_mode == "substring_chars":
-            source = call.arguments["source"]
+            source = call.extraction_source
             if source not in sources:
                 rule, definitions = _extract_rules(source, f"source-{len(sources)}")
                 sources[source] = rule

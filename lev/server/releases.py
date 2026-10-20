@@ -8,7 +8,7 @@ import sys
 from urllib.parse import urlsplit
 
 from lev.job_protocol import decode, encode
-from lev._backend_profiles import validate_generation_profile, validate_extract_mode, validate_source_layout
+from lev._backend_profiles import validate_generation_profile, validate_extract_mode
 from lev.backends.base import LLM_BATCH_DEFAULTS, validate_batch_options
 from lev.backends._generation_policy import validate_policy, validate_token_ratio
 from lev.server._plan_cache import MAX_ENTRIES, MAX_BYTES
@@ -38,8 +38,10 @@ def manifest(config):
     models = {}
     for name in ("decision", "generation"):
         model = config.get(name)
+        if name == "generation" and isinstance(model, dict) and "source_layout" in model:
+            raise ValueError("source_layout was removed; extract now uses source_field")
         required = {"base_url", "model", "revision"}
-        allowed_model = required | ({"profile", "extract_mode", "source_layout", "batch_rule_dedup", "structured_output_revision", "request_policy", "assumed_avg_num_tokens_per_char"} if name == "generation" else set())
+        allowed_model = required | ({"profile", "extract_mode", "batch_rule_dedup", "structured_output_revision", "request_policy", "assumed_avg_num_tokens_per_char"} if name == "generation" else set())
         if (type(model) is not dict or not required <= set(model) or set(model) - allowed_model
                 or any(type(v) is not str or not v.strip() for k, v in model.items() if k not in ("request_policy", "assumed_avg_num_tokens_per_char", "batch_rule_dedup"))):
             raise ValueError(f"{name} needs base_url, model and immutable deployment revision")
@@ -52,9 +54,6 @@ def manifest(config):
             models[name]["profile"] = validate_generation_profile(model.get("profile", "legacy"))
             if "batch_rule_dedup" in model:
                 models[name]["batch_rule_dedup"] = validate_rule_dedup(model["batch_rule_dedup"], models[name]["profile"])
-            layout = validate_source_layout(model.get("source_layout"), models[name]["profile"])
-            if "source_layout" in model:
-                models[name]["source_layout"] = layout
             # Omitted mode keeps existing release hashes stable for old manifests.
             mode = validate_extract_mode(model.get("extract_mode", "validated"), models[name]["profile"])
             if "extract_mode" in model:
@@ -86,7 +85,7 @@ def manifest(config):
     return {"format": "lev-release", "version": 1, "build_sha256": build_sha256(),
             "engineering": {"plan_cache": {"max_entries": MAX_ENTRIES, "max_serialized_bytes": MAX_BYTES,
                                             "compiler_threads": 1, "key": "release_id+canonical_ir_sha256"},
-                            "qwen_source_layout": models["generation"].get("source_layout", "state_refs_v1"), "request_preparation": "immutable_v1",
+                            "qwen_source_layout": "source_field_v1", "request_preparation": "immutable_v1",
                             "worker_refill": "completion_event_v1", "shared_model_slots": "ready_at_admission_fifo_v1",
                             "shared_slot_scope": "single_worker_process; limits bound by execution manifest"},
             "python": f"{sys.version_info.major}.{sys.version_info.minor}", "ir_version": 1,

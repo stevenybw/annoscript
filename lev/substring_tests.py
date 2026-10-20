@@ -64,7 +64,7 @@ class SubstringGrammarTests(unittest.TestCase):
                     self.assertEqual(accepts(c,wire([value])), bool(value) and value in source)
 
     def test_batch_isolation_and_other_operations(self):
-        calls=[SimpleNamespace(id=i,operation=op,arguments={'source':source}) for i,op,source in
+        calls=[SimpleNamespace(id=i,operation=op,arguments={},extraction_source=source) for i,op,source in
                [('a','extract','甲乙'),('b','extract','丙丁'),('c','extract','甲乙'),
                 ('d','generate',''),('e','generate_list','')]]
         c=compiler().compile_grammar(batch_grammar(calls,extract_mode='substring_chars'))

@@ -97,7 +97,7 @@ class AdvisoryWireTests(unittest.IsolatedAsyncioTestCase):
             out=[r async for r in (await rt.submit(lower_to_plan(compile_program(oversized)),[RunInput(0,'source')]))]
             self.assertEqual(out[0].status,'success');self.assertEqual(len(sent),1)
             self.assertEqual(sent[0]['max_tokens'],64+10+32+(6+32+8)+32)
-            self.assertIn('suggestions',sent[0]['messages'][0]['content'])
+            self.assertIn('字符长度为建议',sent[0]['messages'][0]['content'])
         finally:await rt.aclose()
 
     async def test_direct_invalid_args_and_context_no_http(self):

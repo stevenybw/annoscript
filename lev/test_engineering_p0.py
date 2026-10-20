@@ -85,7 +85,7 @@ class PreparedRequestTests(unittest.IsolatedAsyncioTestCase):
     def calls(self, ctx):
         return [normalize_call("a", "generate", ("标题",), {"max_length": 8}, ctx),
                 normalize_call("b", "extract", ("地点",),
-                               {"source": "广州与北京", "max_items": 2, "max_length_per_item": 8}, ctx)]
+                               {"source_field": "text" if isinstance(ctx.state, dict) or hasattr(ctx.state, "keys") else None, "max_items": 2, "max_length_per_item": 8}, ctx)]
 
     def plan(self, b, ctx, calls):
         return b.plan_batch(ctx, calls, max_calls=8, max_input_bytes=262144,
@@ -105,7 +105,7 @@ class PreparedRequestTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(b.preparation_stats['encodes'],before['encodes'])
             self.assertEqual(self.sent[0].content,p.prepared.body)
             self.assertEqual(next(e['body'] for e in events if e['event']=='request'),self.sent[0].content)
-            self.assertTrue(thaw(p.prepared.payload)['messages'][0]['content'].endswith('\n\n业务策略'))
+            self.assertTrue(thaw(p.prepared.payload)['messages'][0]['content'].startswith('业务策略\n'))
             with self.assertRaises(TypeError): p.prepared.payload['model']='changed'
         finally: await b.aclose()
 
@@ -114,7 +114,7 @@ class PreparedRequestTests(unittest.IsolatedAsyncioTestCase):
         try:
             p=self.plan(b,ctx,calls)
             tests=[(ctx,calls,p.max_tokens+1),
-                   (InferenceContext({"text":"独立来源"}),calls,p.max_tokens),
+                   (InferenceContext({"text":"广州与北京", "extra": "new"}),calls,p.max_tokens),
                    (ctx,[replace(calls[0],arguments={**calls[0].arguments,"instructions":"不同标题"}),calls[1]],p.max_tokens)]
             for c,cs,budget in tests:
                 before=b.preparation_stats['payload_builds']
@@ -125,26 +125,27 @@ class PreparedRequestTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNot(self.plan(b,ctx,calls),p)
         finally: await b.aclose()
 
-    async def test_source_refs_single_repair_batch_and_other_profiles(self):
+    async def test_source_fields_single_repair_batch_and_other_profiles(self):
         texts=['广州与北京','甲"乙\\丙\n😀e\u0301','', '\\u1234']
         for profile in ['qwen_vllm','legacy']:
             for text in texts:
-                for state in [text,{"text":text,"other":"不能抽取"}]:
+                for state in [text,{"text":text,"other":"独立来源"}]:
                     b=self.backend(profile=profile);ctx=InferenceContext(state)
-                    c=normalize_call('e','extract',('原文',),{'source':text,'max_items':2,'max_length_per_item':8},ctx)
+                    c=normalize_call('e','extract',('原文',),{'source_field':None if isinstance(state,str) else 'text','max_items':2,'max_length_per_item':8},ctx)
                     try:
                         for feedback in [None,'bad structure']:
                             p=b._prepare(ctx,[c],80,repair_feedback=feedback)
                             wire=json.loads(thaw(p.payload)['messages'][-1]['content'])
                             self.assertEqual(wire['state'],state)
-                            self.assertEqual('source_ref' in wire['task'],profile=='qwen_vllm')
-                            self.assertEqual(llm_calls(thaw(p.payload))[1][0][1].arguments['source'],text)
-                        other=normalize_call('other','extract',('原文',),{'source':'独立来源','max_items':1,'max_length_per_item':8},ctx)
+                            self.assertEqual(wire['task']['source_field'],c.arguments['source_field'])
+                            self.assertEqual(llm_calls(thaw(p.payload))[1][0][1].extraction_source,text)
+                            self.assertNotIn('source',wire['task'])
+                        other = replace(c,id='other') if isinstance(state,str) else normalize_call('other','extract',('原文',),{'source_field':'other','max_items':1,'max_length_per_item':8},ctx)
                         p=self.plan(b,ctx,[c,other,replace(c,id='again')])
                         reconstructed=llm_calls(thaw(p.prepared.payload))[1]
-                        self.assertEqual([v.arguments['source'] for _,v in reconstructed],[text,'独立来源',text])
+                        self.assertEqual([v.extraction_source for _,v in reconstructed],[text,text if isinstance(state,str) else '独立来源',text])
                         wire=json.loads(thaw(p.prepared.payload)['messages'][-1]['content'])
-                        self.assertEqual(len(wire['sources']),2)
+                        self.assertNotIn('sources',wire)
                     finally: await b.aclose()
 
     async def test_prepared_pause_blocks_http_and_local_rejection_not_sent(self):

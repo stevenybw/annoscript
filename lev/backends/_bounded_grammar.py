@@ -26,7 +26,7 @@ def repeat(rule, minimum, maximum):
 
 def ensure_satisfiable(call):
     a = call.arguments
-    if call.operation == "extract" and not a["source"] and a.get("min_items", 0) > 0:
+    if call.operation == "extract" and not call.extraction_source and a.get("min_items", 0) > 0:
         raise InferenceError("empty extraction source cannot satisfy min_items",
                              code="unsatisfiable_constraints", call_id=call.id,
                              metadata={"dispatch_status": "not_sent"})
@@ -39,7 +39,7 @@ def grammar(calls, *, batch=False, extract_mode="validated"):
     def value_rule(call):
         ensure_satisfiable(call)
         a = call.arguments
-        key = (call.operation, a.get("source"), a.get("min_items", 0), a.get("max_items"),
+        key = (call.operation, call.extraction_source, a.get("min_items", 0), a.get("max_items"),
                bool(a.get("min_length", 0)), bool(a.get("min_length_per_item", 0)))
         if key in cache:
             return cache[key]
@@ -49,12 +49,12 @@ def grammar(calls, *, batch=False, extract_mode="validated"):
             body = json_body(bool(a.get('min_length', 0)))
             definitions.append(prefix + ' ::= "\\\"" ' + body + ' "\\\""')
             return prefix
-        if call.operation == "extract" and not a["source"]:
+        if call.operation == "extract" and not call.extraction_source:
             definitions.append(prefix + ' ::= "[]"')
             return prefix
         item = prefix + '-string'
         if call.operation == "extract" and extract_mode == "substring_chars":
-            chunks = [literal(json.dumps(c, ensure_ascii=False)[1:-1]) for c in a['source']]
+            chunks = [literal(json.dumps(c, ensure_ascii=False)[1:-1]) for c in call.extraction_source]
             options = ', allow_empty=false'
             body = prefix + '-body'
             definitions.append(body + ' ::= Substring(' + ', '.join(chunks) + options + ')')
