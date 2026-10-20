@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Dict
 from dataclasses import dataclass
 
+from lev._examples import Example
+
 
 def constrain(condition: bool, *, message: str | None = None) -> None:
     """Declare a hard constraint in a compiled Lev eDSL program.
@@ -73,6 +75,11 @@ class Lev(ABC):
     per-record instance. Implementations must apply it to every model operation,
     including operations called from helpers, alongside the per-call task
     instructions. It does not override API guarantees or hard constraints.
+
+    All operations accept ``examples``: a list of Example values (or their
+    serialized state/answer objects). None and [] mean no examples. Examples
+    inherit this call's instructions, criteria and constraints, and are checked
+    before dispatch. They teach task semantics, not facts about the current state.
     """
 
     def __init__(
@@ -92,12 +99,15 @@ class Lev(ABC):
         instructions: str,
         criteria_false: str | None = None,
         criteria_true: str | None = None,
+        *,
+        examples: list[Example] | None = None,
     ) -> NoulResponse:
         """Evaluate a yes/no question using this instance's state and model."""
         raise NotImplementedError
 
     @abstractmethod
-    def choice(self, instructions: str, criteria: Dict[str, str]) -> ChoiceResponse:
+    def choice(self, instructions: str, criteria: Dict[str, str], *,
+               examples: list[Example] | None = None) -> ChoiceResponse:
         """Select an option using this instance's state and model.
 
         A successful result must have ``result.choice in criteria`` and a finite
@@ -108,7 +118,8 @@ class Lev(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def score(self, instructions: str, criteria: List[str]) -> ScoreResponse:
+    def score(self, instructions: str, criteria: List[str], *,
+              examples: list[Example] | None = None) -> ScoreResponse:
         """Score the state against ordered criteria using this instance's model."""
         raise NotImplementedError
 
@@ -122,6 +133,7 @@ class Lev(ABC):
         max_items: int,
         max_length_per_item: int,
         max_num_tokens: int | None = None,
+        examples: list[Example] | None = None,
     ) -> ExtractResponse:
         """Extract verbatim passages using this instance's state and model.
 
@@ -158,6 +170,7 @@ class Lev(ABC):
         min_length: int = 0,
         max_length: int,
         max_num_tokens: int | None = None,
+        examples: list[Example] | None = None,
     ) -> GenerateResponse:
         """Generate text using this instance's state and model.
 
@@ -194,6 +207,7 @@ class Lev(ABC):
         min_length_per_item: int = 0,
         max_length_per_item: int,
         max_num_tokens: int | None = None,
+        examples: list[Example] | None = None,
     ) -> GenerateListResponse:
         """Generate a list of texts using this instance's state and model.
 

@@ -2,7 +2,8 @@
 
 from lev._data import thaw
 from lev.lev import NoulResponse, ChoiceResponse, ScoreResponse
-from .base import HTTPBackend, BatchResult, InferenceError, validate_response, DECISION_OPERATIONS
+from .base import HTTPBackend, BatchResult, InferenceError, validate_response, normalize_arguments, DECISION_OPERATIONS
+from ._example_layout import EXAMPLE_CONTRACT
 
 
 class DecisionAPIBackend(HTTPBackend):
@@ -13,9 +14,17 @@ class DecisionAPIBackend(HTTPBackend):
         for call in calls:
             if call.operation not in DECISION_OPERATIONS:
                 raise ValueError("unsupported Decision operation")
-            a = thaw(call.arguments)
+            a = normalize_arguments(call.operation, (), thaw(call.arguments))
             instructions = a["instructions"]
-            if context.system_prompt is not None:
+            if a.get("examples"):
+                instructions = {
+                    "task_instructions": instructions,
+                    "example_policy": EXAMPLE_CONTRACT,
+                    "examples": a["examples"],
+                }
+                if context.system_prompt is not None:
+                    instructions["shared_instructions"] = context.system_prompt
+            elif context.system_prompt is not None:
                 instructions = "Shared instructions:\n" + context.system_prompt + "\n\nTask instructions:\n" + instructions
             q = {"type": call.operation, "instructions": instructions}
             if call.operation == "noul":

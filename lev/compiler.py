@@ -27,7 +27,7 @@ from typing import Callable
 
 from lev import ir
 from lev._client_common import JSONValue, get_program_config, precondition, system_prompt
-from lev.lev import Lev, constrain
+from lev.lev import Example, Lev, constrain
 
 
 class CompileError(ValueError):
@@ -237,6 +237,8 @@ class _Compiler:
 
     def capture(self, value, f, node, seen=None):
         seen = set() if seen is None else seen
+        if type(value) is Example:
+            return self.capture(value.to_dict(), f, node, seen)
         if value is None or type(value) in (str, bool, int, float):
             if type(value) is float and not math.isfinite(value):
                 self.fail(f, node, "Captured numbers must be finite")
@@ -442,6 +444,13 @@ class _Compiler:
         if pure and (operation is not None or isinstance(target, FunctionType) and target is not json.dumps):
             self.fail(f, node, "Constraint expressions must be pure; inference and helper calls are not allowed")
         args, kwargs = self.arguments(node, out, f, pure)
+        if target is Example:
+            bound = self.bind(inspect.signature(Example), args, kwargs, f, node)
+            expression = ir.Intrinsic("example", tuple(
+                self.data(bound.arguments[name], f, node) for name in ("state", "answer")
+            ))
+            return self.value(expression, _Info("readonly", "dict", element=_STRING),
+                              out, f, node, pure)
         if operation:
             self.bind(inspect.signature(getattr(Lev, operation)), [None, *args], kwargs, f, node)
             expr_args = tuple(self.data(v, f, node) for v in args)

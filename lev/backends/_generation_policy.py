@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from .base import BackendFatalError
+from lev._data import thaw
 
 
 SAMPLING = {"temperature": 0, "top_p": 1, "top_k": -1, "min_p": 0,
@@ -96,7 +97,7 @@ def effective_budget(call, assumed_avg_num_tokens_per_char=2, override=None):
     a = call.arguments
     # Direct backend callers also pass through the public argument validator.
     from .base import normalize_arguments
-    normalize_arguments(call.operation, (), dict(a))
+    normalize_arguments(call.operation, (), thaw(a))
     if call.operation == "extract" and type(call.extraction_source) is not str:
         raise ValueError("extract call requires a normalized source_field binding")
     explicit = a.get("max_num_tokens")

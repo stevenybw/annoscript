@@ -12,6 +12,7 @@ from .base import (HTTPBackend, InferenceOutput, InferenceError, validate_respon
 from ._generation_policy import validate_policy, PinnedTokenCounter, effective_budget, validate_token_ratio
 from ._bounded_grammar import grammar as bounded_grammar, ensure_satisfiable
 from ._shared_rules import factor_rules, RULE_CONTRACT, validate_rule_dedup
+from ._example_layout import share_examples, EXAMPLE_CONTRACT, EXAMPLE_REFERENCES
 
 
 def _unique_object(pairs):
@@ -157,6 +158,7 @@ class LLMAPIBackend(HTTPBackend):
 
     def _single_payload(self, context, call, max_tokens, repair_feedback=None):
         a = self._task_arguments(call)
+        example_states = share_examples([a])
         contract = self._LIMITS
         if call.operation == "generate":
             contract += "只返回所需文本，不加 JSON 包装或引号。"
@@ -166,8 +168,13 @@ class LLMAPIBackend(HTTPBackend):
                 contract += self._EXTRACT
         if repair_feedback is not None:
             contract += "上次回答未通过格式或约束检查：" + repair_feedback + "。请按单项格式重新回答。"
+        if example_states:
+            contract += EXAMPLE_CONTRACT + EXAMPLE_REFERENCES
         messages = self._messages(context, contract)
-        messages.append({"role": "user", "content": json.dumps({"state": thaw(context.state), "operation": call.operation, "task": a}, ensure_ascii=False, allow_nan=False)})
+        messages.append({"role": "user", "content": json.dumps({
+            "state": thaw(context.state), "operation": call.operation, "task": a,
+            **({"example_states": example_states} if example_states else {}),
+        }, ensure_ascii=False, allow_nan=False)})
         payload = {"model": self.model, "messages": messages}
         if self.disable_thinking:
             if self.profile == "qwen_vllm":
@@ -243,6 +250,7 @@ class LLMAPIBackend(HTTPBackend):
             effective_budget(call, self.assumed_avg_num_tokens_per_char)
             tasks[call.id] = {"operation": call.operation, "task": self._task_arguments(call)}
         shared_rules, _ = factor_rules(tasks) if self.batch_rule_dedup else ({}, {})
+        example_states = share_examples([task["task"] for task in tasks.values()])
         contract = (self._LIMITS + "各任务独立回答，其他任务的答案不能作为依据。"
                     '只返回 {"answers":{"ID1":{"type":"generate","text":"..."},"ID2":{"type":"extract","items":["..."]}}}。'
                     "每个任务 ID 恰好一次；generate 用 text，generate_list 和 extract 用 items，不加其他字段。")
@@ -250,10 +258,13 @@ class LLMAPIBackend(HTTPBackend):
             contract += self._EXTRACT
         if shared_rules:
             contract += RULE_CONTRACT
+        if example_states:
+            contract += EXAMPLE_CONTRACT + EXAMPLE_REFERENCES
         messages = self._messages(context, contract)
         messages.append({"role": "user", "content": json.dumps(
             {"state": thaw(context.state), "tasks": tasks,
-             **({"shared_rules": shared_rules} if shared_rules else {})},
+             **({"shared_rules": shared_rules} if shared_rules else {}),
+             **({"example_states": example_states} if example_states else {})},
             ensure_ascii=False, allow_nan=False, separators=(",", ":"))})
         payload = {"model": self.model, "messages": messages, "max_tokens": max_tokens}
         if self.profile == "qwen_vllm":

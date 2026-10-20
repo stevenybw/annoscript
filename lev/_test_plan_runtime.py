@@ -10,6 +10,7 @@ import inspect
 import json
 import operator
 import random
+from copy import deepcopy
 
 from lev import ir
 from lev.plan import ExecutionPlan
@@ -62,7 +63,8 @@ def _expr(e, env, state):
         return value
     if kind == "intrinsic":
         funcs = {"len": len, "int": int, "range": range, "enumerate": enumerate,
-                 "str.strip": str.strip, "json.dumps": json.dumps}
+                 "str.strip": str.strip, "json.dumps": json.dumps,
+                 "example": lambda state, answer: deepcopy({"state": state, "answer": answer})}
         return funcs[e["name"]](*[ev(x) for x in e["args"]], **{k: ev(v) for k, v in e["kwargs"]})
     if kind == "format_value":
         value = ev(e["value"])

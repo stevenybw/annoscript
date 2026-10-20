@@ -4,6 +4,7 @@ import json
 import operator
 
 from lev import ir
+from lev._examples import example_data
 from lev.backends.base import RESPONSE_TYPES
 
 
@@ -60,7 +61,8 @@ def expression(node, env, state, allocations=None):
         return value
     if isinstance(node, ir.Intrinsic):
         fn = {"len": len, "int": int, "range": range, "enumerate": enumerate,
-              "str.strip": str.strip, "json.dumps": json.dumps}[node.name]
+              "str.strip": str.strip, "json.dumps": json.dumps,
+              "example": example_data}[node.name]
         return fn(*[ev(x) for x in node.args], **{k: ev(v) for k, v in node.kwargs})
     if isinstance(node, ir.FormatValue):
         value = ev(node.value)

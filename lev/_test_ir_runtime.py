@@ -6,6 +6,7 @@ It is not a supported execution API or a production solver.
 
 import json
 import operator
+from copy import deepcopy
 
 
 class _Returned(Exception):
@@ -63,7 +64,8 @@ def evaluate(program, lev):
             return value
         if kind == "intrinsic":
             functions = {"len": len, "int": int, "range": range, "enumerate": enumerate,
-                         "str.strip": str.strip, "json.dumps": json.dumps}
+                         "str.strip": str.strip, "json.dumps": json.dumps,
+                         "example": lambda state, answer: deepcopy({"state": state, "answer": answer})}
             args = [expr(arg) for arg in node["args"]]
             kwargs = {key: expr(value) for key, value in node["kwargs"]}
             return functions[node["name"]](*args, **kwargs)

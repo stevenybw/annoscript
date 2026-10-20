@@ -16,7 +16,9 @@ constraints have been satisfied. Tuples are permitted as intermediate values.
 Statement IDs identify static sites; a runtime must additionally distinguish loop
 iterations and repeated evaluations. Source metadata is diagnostic only.
 Intrinsic names have fixed semantics: len, int, range, enumerate, str.strip and
-json.dumps follow their Python counterparts on supported data values. strip
+json.dumps follow their Python counterparts on supported data values. example
+snapshots state and answer into a plain JSON object, without constructing Python
+application objects. strip
 requires a string receiver. These names never resolve to user-provided code.
 
 This module defines data and serialization, not an executor or solver. All node
@@ -349,7 +351,7 @@ _NODE_TYPES = {
     )
 }
 _COMPARISON_OPS = frozenset(("eq", "ne", "lt", "le", "gt", "ge", "in", "not_in", "is", "is_not"))
-_INTRINSIC_NAMES = frozenset(("len", "int", "range", "enumerate", "str.strip", "json.dumps"))
+_INTRINSIC_NAMES = frozenset(("len", "int", "range", "enumerate", "str.strip", "json.dumps", "example"))
 _RESPONSE_FIELDS = frozenset(("noul", "choice", "confidence", "probabilities", "score", "legend", "items", "text"))
 
 

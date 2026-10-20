@@ -9,7 +9,7 @@ import time
 import uuid
 
 from lev._data import freeze, thaw, snapshot
-from lev.lev import (Lev, NoulResponse, ChoiceResponse, ScoreResponse,
+from lev.lev import (Example, Lev, NoulResponse, ChoiceResponse, ScoreResponse,
                      ExtractResponse, GenerateResponse, GenerateListResponse)
 
 
@@ -110,18 +110,57 @@ def normalize_call(call_id, operation, args, kwargs, context):
     values = normalize_arguments(operation, args, kwargs)
     source = None
     if operation == "extract":
-        name = values["source_field"]
-        if type(context.state) is str:
-            if name is not None:
-                raise ValueError("string state requires source_field=None")
-            source = context.state
-        else:
-            if not isinstance(context.state, Mapping) or name is None:
-                raise ValueError("object state requires an explicit extract source_field")
-            if name not in context.state or type(context.state[name]) is not str:
-                raise ValueError("extract source_field must name an existing string field")
-            source = context.state[name]
+        source = extraction_source(context.state, values["source_field"])
     return InferenceCall(call_id, operation, values, source)
+
+
+def extraction_source(state, name):
+    if type(state) is str:
+        if name is not None:
+            raise ValueError("string state requires source_field=None")
+        return state
+    if not isinstance(state, Mapping) or name is None:
+        raise ValueError("object state requires an explicit extract source_field")
+    if name not in state or type(state[name]) is not str:
+        raise ValueError("extract source_field must name an existing string field")
+    return state[name]
+
+
+def normalize_examples(operation, values):
+    examples = values.pop("examples")
+    if examples is None:
+        return
+    if type(examples) is not list:
+        raise ValueError("examples must be a list")
+    normalized = []
+    for index, example in enumerate(examples):
+        if type(example) is Example:
+            example = example.to_dict()
+        if type(example) is not dict or set(example) != {"state", "answer"}:
+            raise ValueError(f"examples[{index}] requires exactly state and answer")
+        example = snapshot(example)
+        snapshot(example["state"], state=True)
+        answer = example["answer"]
+        if operation == "choice":
+            valid = type(answer) is str and answer in values["criteria"]
+        elif operation == "noul":
+            valid = type(answer) is bool
+        elif operation == "score":
+            valid = type(answer) is int and 0 <= answer < len(values["criteria"])
+        else:
+            source = (extraction_source(example["state"], values["source_field"])
+                      if operation == "extract" else None)
+            call = InferenceCall(f"example-{index}", operation, values, source)
+            try:
+                validate_response(call, RESPONSE_TYPES[operation](answer))
+                valid = True
+            except InferenceError:
+                valid = False
+        if not valid:
+            raise ValueError(f"examples[{index}].answer violates {operation} contract")
+        normalized.append(example)
+    if normalized:
+        values["examples"] = normalized
 
 
 def normalize_arguments(operation, args, kwargs):
@@ -160,6 +199,7 @@ def normalize_arguments(operation, args, kwargs):
     if operation == "extract":
         if values["source_field"] is not None and type(values["source_field"]) is not str:
             raise ValueError("extract source_field must be a string or None")
+    normalize_examples(operation, values)
     return values
 
 
