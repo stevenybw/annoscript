@@ -68,14 +68,12 @@ class SubstringGrammarTests(unittest.TestCase):
                [('a','extract','甲乙'),('b','extract','丙丁'),('c','extract','甲乙'),
                 ('d','generate',''),('e','generate_list','')]]
         c=compiler().compile_grammar(batch_grammar(calls,extract_mode='substring_chars'))
-        answers={'a':{'type':'extract','items':['甲']},'b':{'type':'extract','items':['丁']},
-                 'c':{'type':'extract','items':['乙']},'d':{'type':'generate','text':'任意改写'},
-                 'e':{'type':'generate_list','items':['','任意改写']}}
+        answers={'q1':['甲'],'q2':['丁'],'q3':['乙'],'q4':'任意改写','q5':['','任意改写']}
         def encode():return json.dumps({'answers':answers},ensure_ascii=False,separators=(',',':'))
         self.assertTrue(accepts(c,encode()))
         for bad in ['丁','甲丁','']:
-            answers['a']['items']=[bad];self.assertFalse(accepts(c,encode()))
-        answers['a']={'type':'generate','text':'甲'};self.assertFalse(accepts(c,encode()))
+            answers['q1']=[bad];self.assertFalse(accepts(c,encode()))
+        answers['q1']='甲';self.assertFalse(accepts(c,encode()))
 
 
 if __name__=='__main__':unittest.main()

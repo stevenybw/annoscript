@@ -91,7 +91,7 @@ class AdvisoryWireTests(unittest.IsolatedAsyncioTestCase):
         def handler(req):
             body=json.loads(req.content);sent.append(body)
             tasks=llm_calls(body)[1]
-            answers={call.id:({'type':'generate','text':'甲'*100} if call.operation=='generate' else {'type':'generate_list','items':['乙'*100]}) for _,call in tasks}
+            answers={f'q{index}':('甲'*100 if call.operation=='generate' else ['乙'*100]) for index,(_,call) in enumerate(tasks,1)}
             return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'answers':answers})}}]})
         b=LLMAPIBackend('https://offline.invalid','fixture','q',profile='qwen_vllm',request_policy=policy(),_token_counter=lambda p:1,transport=httpx.MockTransport(handler))
         rt=LevRuntime(FakeBackend(),b)

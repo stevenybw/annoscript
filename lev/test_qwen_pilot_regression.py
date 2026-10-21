@@ -35,7 +35,7 @@ class LayoutTests(unittest.IsolatedAsyncioTestCase):
                 for profile in ('legacy','qwen_vllm'):
                     def handle(req):
                         body=json.loads(req.content);bodies[profile]=body
-                        return completion(json.dumps({'answers':{'a':{'type':'extract','items':['广州']},'b':{'type':'generate_list','items':['空间']}}} if mode=='batch' else {'items':['广州']}))
+                        return completion(json.dumps({'answers':{'q1':['广州'],'q2':['空间']}} if mode=='batch' else {'items':['广州']}))
                     backend=LLMAPIBackend('https://offline.invalid/v1','fixture','model',profile=profile,
                                           transport=httpx.MockTransport(handle))
                     try:

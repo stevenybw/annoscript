@@ -13,6 +13,7 @@ from ._generation_policy import validate_policy, PinnedTokenCounter, effective_b
 from ._bounded_grammar import grammar as bounded_grammar, ensure_satisfiable
 from ._shared_rules import factor_rules, validate_rule_dedup
 from ._prompt import messages
+from ._batch_wire import FORMAT, batch_calls
 
 
 def _unique_object(pairs):
@@ -77,6 +78,7 @@ class LLMAPIBackend(HTTPBackend):
                  "model": self.model, "base_url": self.base_url, "profile": self.profile,
                  "extract_mode": self.extract_mode, "source_layout": "source_field_v1",
                  "batch_rule_dedup": self.batch_rule_dedup,
+                 "batch_response_format": FORMAT,
                  "disable_thinking": self.disable_thinking, "request_policy": self.request_policy,
                  "token_ratio": self.assumed_avg_num_tokens_per_char,
                  "max_tokens": max_tokens, "repair_feedback": repair_feedback}
@@ -89,6 +91,9 @@ class LLMAPIBackend(HTTPBackend):
         payload = (self._batch_payload(context, calls, max_tokens) if batch else
                    self._single_payload(context, calls[0], max_tokens, repair_feedback))
         evidence = {**self._context_evidence(payload), **self._sources_evidence(context, calls)}
+        if batch:
+            evidence.update(batch_response_format=FORMAT,
+                            wire_call_ids={key: call.id for key, call in batch_calls(calls).items()})
         if batch and self.batch_rule_dedup:
             tasks = {c.id: {"task": {"instructions": c.arguments["instructions"]}} for c in calls}
             _, rule_evidence = factor_rules(tasks)
@@ -264,6 +269,7 @@ class LLMAPIBackend(HTTPBackend):
         return plan
 
     async def infer_batch(self, context, calls, *, max_tokens, prepared=None):
+        identified = batch_calls(calls)
         await self._check_constraints(calls)
         if prepared is None or prepared.binding != self._binding(context, calls, max_tokens):
             prepared = self._prepare(context, calls, max_tokens, batch=True)
@@ -291,21 +297,18 @@ class LLMAPIBackend(HTTPBackend):
             if type(value) is not dict or set(value) != {"answers"} or type(value["answers"]) is not dict:
                 raise ValueError()
             answers = value["answers"]
-            if set(answers) - {c.id for c in calls}:
+            if set(answers) - set(identified):
                 raise ValueError()
         except InferenceError:
             raise
         except (KeyError, IndexError, TypeError, ValueError):
             raise InferenceError("unreliable batch output mapping", code="invalid_batch_output", metadata=metadata) from None
         responses, errors = {}, {}
-        for call in calls:
+        for identity, call in identified.items():
             try:
-                answer = answers[call.id]
-                field = "text" if call.operation == "generate" else "items"
-                if type(answer) is not dict or set(answer) != {"type", field} or answer["type"] != call.operation:
-                    raise ValueError()
+                answer = answers[identity]
                 cls = {"generate": GenerateResponse, "generate_list": GenerateListResponse, "extract": ExtractResponse}[call.operation]
-                responses[call.id] = validate_response(call, cls(answer[field]))
+                responses[call.id] = validate_response(call, cls(answer))
             except InferenceError as exc:
                 exc.metadata = metadata
                 errors[call.id] = exc

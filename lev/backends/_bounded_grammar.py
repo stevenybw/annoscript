@@ -3,6 +3,7 @@
 import json
 
 from .base import InferenceError
+from ._batch_wire import batch_calls
 
 
 # Keep a complete JSON code point in one lexical FSM: a repeated independent
@@ -75,11 +76,9 @@ def grammar(calls, *, batch=False, extract_mode="validated"):
 
     if batch:
         parts = [literal('{"answers":{')]
-        for i, call in enumerate(calls):
-            field = 'text' if call.operation == 'generate' else 'items'
-            prefix = (',' if i else '') + json.dumps(call.id, ensure_ascii=False)
-            prefix += ':{"type":' + json.dumps(call.operation) + ',"' + field + '":'
-            parts.extend([literal(prefix), value_rule(call), literal('}')])
+        for i, (identity, call) in enumerate(batch_calls(calls).items()):
+            prefix = (',' if i else '') + json.dumps(identity) + ':'
+            parts.extend([literal(prefix), value_rule(call)])
         parts.append(literal('}}'))
         root = ' '.join(parts)
     else:

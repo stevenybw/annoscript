@@ -51,7 +51,7 @@ class PromptLayoutTests(unittest.TestCase):
                     self.assertIn("只返回所需文本，不加 JSON 包装或引号", bodies[0]["messages"][0]["content"])
                     self.assertIn("唯一字段 items 为字符串数组", bodies[1]["messages"][0]["content"])
                     self.assertIn("唯一顶层字段为 answers", bodies[-1]["messages"][0]["content"])
-                    self.assertIn('任务 "b"（generate_list）：\n产品维度。', bodies[-1]["messages"][0]["content"])
+                    self.assertIn('任务 "q2"（generate_list）：\n产品维度。', bodies[-1]["messages"][0]["content"])
 
     def test_examples_group_inputs_without_overwriting_answers_or_changing_calls(self):
         first = {"text": "示例广州", "meta": ["甲"]}
@@ -78,10 +78,13 @@ class PromptLayoutTests(unittest.TestCase):
             self.assertEqual(examples.count("输入：" + encoded(first)), 1)
             self.assertNotIn("输入：" + encoded(reordered), examples)
             self.assertLess(examples.index("示例广州"), examples.index("示例南京"))
-            for identity, answer in [("a", '标题"甲"\n😀'), ("a", "另一答案"),
-                                     ("a", "标题乙"), ("b", ["广州"])]:
-                self.assertIn(f"任务 {encoded(identity)} 的正确答案：{encoded(answer)}", examples)
-            self.assertNotIn('任务 "c"', examples)
+            outputs = [json.loads(line.removeprefix("示例输出：")) for line in examples.splitlines()
+                       if line.startswith("示例输出：")]
+            self.assertEqual(outputs, [{"answers": {"q1": '标题"甲"\n😀'}},
+                                       {"answers": {"q1": "另一答案", "q2": ["广州"]}},
+                                       {"answers": {"q1": "标题乙"}}])
+            self.assertNotIn('"q3"', examples)
+            self.assertIn("当前正式回答必须包含全部任务", examples)
             self.assertNotIn("state_ref", prompt)
             repair = backend._single_payload(context, b, 160, "格式错误")
             repaired_prompt = repair["messages"][0]["content"]

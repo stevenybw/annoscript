@@ -5,6 +5,7 @@ import json
 from lev._data import thaw
 from ._example_layout import group_examples
 from ._shared_rules import factor_rules
+from ._batch_wire import batch_calls
 
 
 def _json(value):
@@ -31,7 +32,9 @@ def _task_rules(operation, arguments):
 
 def messages(context, calls, *, batch=False, rule_dedup=False, repair_feedback=None):
     """Render detached arguments without changing calls, examples, or current state."""
-    tasks = {call.id: {"operation": call.operation, "task": thaw(call.arguments)} for call in calls}
+    identified = batch_calls(calls) if batch else {call.id: call for call in calls}
+    tasks = {identity: {"operation": call.operation, "task": thaw(call.arguments)}
+             for identity, call in identified.items()}
     shared_rules, _ = factor_rules(tasks) if batch and rule_dedup else ({}, {})
     parts = [context.system_prompt.strip()] if context.system_prompt else []
     contract = (
@@ -43,8 +46,8 @@ def messages(context, calls, *, batch=False, rule_dedup=False, repair_feedback=N
         contract += (
             "各任务独立回答，其他任务的答案不能作为依据。"
             "只返回一个 JSON 对象，唯一顶层字段为 answers，其值为按任务 ID 索引的对象。"
-            "每个任务 ID 恰好出现一次，对应一个对象，type 填写该任务的操作名；"
-            "generate 用字符串 text，generate_list 和 extract 用字符串数组 items，不加其他字段。"
+            "每个任务 ID 恰好出现一次，直接对应答案值；"
+            "generate 的值为字符串，generate_list 和 extract 的值为字符串数组，不加其他字段或包装。"
         )
     elif calls[0].operation == "generate":
         contract += "只返回所需文本，不加 JSON 包装或引号。"
@@ -70,13 +73,25 @@ def messages(context, calls, *, batch=False, rule_dedup=False, repair_feedback=N
     if examples:
         parts.append(
             "Example\n以下输入与正确答案仅用于理解规则，不是当前输入的事实，不能作为当前抽取的来源。"
-            "正确答案是对应算子的值，不包含置信度；实际答复仍遵守上述输出格式。"
+            + ("示例输出使用上述 answers 格式，仅展示已有答案的任务；当前正式回答必须包含全部任务。"
+               if batch else "正确答案是对应算子的值，不包含置信度；实际答复仍遵守上述输出格式。") +
             "未展示答案的任务没有该示例，不要补造示例答案。"
         )
         for index, example in enumerate(examples, 1):
-            parts.append(f"示例 {index}\n输入：{_json(example['state'])}\n" +
-                         "\n".join(f"任务 {_json(identity)} 的正确答案：{_json(answer)}"
-                                   for identity, answer in example["answers"]))
+            if batch:
+                outputs, current = [], {}
+                for identity, answer in example["answers"]:
+                    if identity in current:
+                        outputs.append(current)
+                        current = {}
+                    current[identity] = answer
+                if current:
+                    outputs.append(current)
+                rendered = "\n".join("示例输出：" + _json({"answers": output}) for output in outputs)
+            else:
+                rendered = "\n".join(f"任务 {_json(identity)} 的正确答案：{_json(answer)}"
+                                     for identity, answer in example["answers"])
+            parts.append(f"示例 {index}\n输入：{_json(example['state'])}\n" + rendered)
     state = thaw(context.state)
     return [{"role": "system", "content": "\n\n".join(parts)},
             {"role": "user", "content": state if isinstance(state, str) else _json(state)}]
