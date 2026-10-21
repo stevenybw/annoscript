@@ -18,6 +18,8 @@ class DecisionAPIBackend(HTTPBackend):
                 raise ValueError("unsupported Decision operation")
             a = normalize_arguments(call.operation, (), thaw(call.arguments))
             instructions = a["instructions"]
+            if a.get("requirements"):
+                instructions += "\n\n要求：\n" + "\n".join(dict.fromkeys(a["requirements"]))
             if a.get("examples"):
                 instructions = {
                     "task_instructions": instructions,

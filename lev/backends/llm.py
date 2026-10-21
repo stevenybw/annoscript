@@ -185,7 +185,7 @@ class LLMAPIBackend(HTTPBackend):
                 raise ValueError()
             content = message["content"]
             if call.operation == "generate":
-                response = GenerateResponse(content)
+                response = GenerateResponse(json.loads(content) if call.arguments.get("nullable", False) else content)
             else:
                 value = json.loads(content)
                 if type(value) is not dict or set(value) != {"items"}:
@@ -207,10 +207,11 @@ class LLMAPIBackend(HTTPBackend):
     def _length_observation(call, response):
         a = call.arguments
         single = call.operation == "generate"
-        lengths = [len(response.text)] if single else [len(item) for item in response.items]
+        lengths = ([] if response.text is None else [len(response.text)]) if single else [len(item) for item in response.items]
         low = a.get("min_length" if single else "min_length_per_item", 0)
         high = a["max_length" if single else "max_length_per_item"]
-        return {"actual_codepoints": lengths, "suggested_min": low, "suggested_max": high,
+        return {**({"is_null": response.text is None} if single and a.get("nullable", False) else {}),
+                "actual_codepoints": lengths, "suggested_min": low, "suggested_max": high,
                 "outside_suggestion": sum(n < low or n > high for n in lengths),
                 "hard_failure": False}
 

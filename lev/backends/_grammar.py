@@ -68,6 +68,8 @@ def batch_grammar(calls, *, extract_mode="validated"):
     for index, (identity, call) in enumerate(batch_calls(calls).items()):
         prefix = ("," if index else "") + json.dumps(identity) + ':'
         value_rule = "string" if call.operation == "generate" else "items"
+        if call.operation == "generate" and call.arguments.get("nullable", False):
+            value_rule = '(string | "null")'
         if call.operation == "extract" and extract_mode == "substring_chars":
             source = call.extraction_source
             if source not in sources:

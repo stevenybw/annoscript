@@ -60,7 +60,7 @@ class ExtractResponse:
 
 @dataclass
 class GenerateResponse:
-    text: str
+    text: str | None
 
 
 @dataclass
@@ -80,6 +80,12 @@ class Lev(ABC):
     serialized state/answer objects). None and [] mean no examples. Examples
     inherit this call's instructions, criteria and constraints, and are checked
     before dispatch. They teach task semantics, not facts about the current state.
+
+    All operations accept ``requirements``: a list of nonblank strings describing
+    additional task instructions. None and [] mean no extra requirements. LLM
+    requests group identical strings and name only the tasks they apply to;
+    Decision questions include their own requirements in the task instructions.
+    Requirements do not replace API guarantees or hard constraints.
 
     Generation operations accept ``field_name``: a nonblank string used as the
     model-visible task name, including batch answer keys. None preserves automatic
@@ -106,13 +112,15 @@ class Lev(ABC):
         criteria_true: str | None = None,
         *,
         examples: list[Example] | None = None,
+        requirements: list[str] | None = None,
     ) -> NoulResponse:
         """Evaluate a yes/no question using this instance's state and model."""
         raise NotImplementedError
 
     @abstractmethod
     def choice(self, instructions: str, criteria: Dict[str, str], *,
-               examples: list[Example] | None = None) -> ChoiceResponse:
+               examples: list[Example] | None = None,
+               requirements: list[str] | None = None) -> ChoiceResponse:
         """Select an option using this instance's state and model.
 
         A successful result must have ``result.choice in criteria`` and a finite
@@ -124,7 +132,8 @@ class Lev(ABC):
 
     @abstractmethod
     def score(self, instructions: str, criteria: List[str], *,
-              examples: list[Example] | None = None) -> ScoreResponse:
+              examples: list[Example] | None = None,
+              requirements: list[str] | None = None) -> ScoreResponse:
         """Score the state against ordered criteria using this instance's model."""
         raise NotImplementedError
 
@@ -140,6 +149,7 @@ class Lev(ABC):
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
         field_name: str | None = None,
+        requirements: list[str] | None = None,
     ) -> ExtractResponse:
         """Extract verbatim passages using this instance's state and model.
 
@@ -178,13 +188,19 @@ class Lev(ABC):
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
         field_name: str | None = None,
+        nullable: bool = False,
+        requirements: list[str] | None = None,
     ) -> GenerateResponse:
         """Generate text using this instance's state and model.
 
-        The result is always a string, never ``None``, and may paraphrase or
-        synthesize the state as directed by ``instructions``. ``min_length`` and
+        The result is a string by default. ``nullable=True`` additionally allows
+        ``None`` (JSON null), without converting the literal string "null".
+        Nullable standalone calls and repairs return a JSON string or null scalar;
+        ordinary standalone calls remain raw text. Batches retain their answers
+        wrapper. The result may paraphrase or synthesize the state as directed by
+        ``instructions``. ``min_length`` and
         required ``max_length`` are suggested Unicode code-point lengths, measured by
-        Python's ``len``. A positive ``min_length`` still requires nonempty text,
+        Python's ``len``. A positive ``min_length`` requires nonempty non-null text,
         but other deviations from the suggested range are not failures.
 
         ``max_num_tokens`` is an independent output limit for a standalone
@@ -196,7 +212,8 @@ class Lev(ABC):
         into a successful response.
 
         Implementations must raise ``ValueError`` for negative length bounds,
-        an inverted length range, or a nonpositive ``max_num_tokens``. If valid
+        an inverted length range, a nonpositive ``max_num_tokens``, or a
+        non-boolean ``nullable``. If valid
         output cannot be produced, report failure rather than returning a
         successful result that violates the constraints. These constraints do
         not guarantee factual accuracy. Branching and recovery remain the
@@ -216,6 +233,7 @@ class Lev(ABC):
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
         field_name: str | None = None,
+        requirements: list[str] | None = None,
     ) -> GenerateListResponse:
         """Generate a list of texts using this instance's state and model.
 

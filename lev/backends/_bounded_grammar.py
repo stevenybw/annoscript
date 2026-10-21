@@ -41,14 +41,17 @@ def grammar(calls, *, batch=False, extract_mode="validated"):
         ensure_satisfiable(call)
         a = call.arguments
         key = (call.operation, call.extraction_source, a.get("min_items", 0), a.get("max_items"),
-               bool(a.get("min_length", 0)), bool(a.get("min_length_per_item", 0)))
+               bool(a.get("min_length", 0)), bool(a.get("min_length_per_item", 0)),
+               bool(a.get("nullable", False)))
         if key in cache:
             return cache[key]
         prefix = 'value-' + str(len(cache))
         cache[key] = prefix
         if call.operation == "generate":
             body = json_body(bool(a.get('min_length', 0)))
-            definitions.append(prefix + ' ::= "\\\"" ' + body + ' "\\\""')
+            string = '"\\\"" ' + body + ' "\\\""'
+            value = '(' + string + ' | "null")' if a.get("nullable", False) else string
+            definitions.append(prefix + ' ::= ' + value)
             return prefix
         if call.operation == "extract" and not call.extraction_source:
             definitions.append(prefix + ' ::= "[]"')
@@ -84,9 +87,11 @@ def grammar(calls, *, batch=False, extract_mode="validated"):
     else:
         call, = calls
         ensure_satisfiable(call)
-        if call.operation == 'generate':
+        if call.operation == 'generate' and not call.arguments.get("nullable", False):
             # Standalone generate remains raw text, with no JSON wrapper.
             root = 'Regex(' + json.dumps(r'[\s\S]' + ('+' if call.arguments.get('min_length', 0) else '*')) + ')' 
+        elif call.operation == 'generate':
+            root = value_rule(call)
         else:
             root = literal('{"items":') + ' ' + value_rule(call) + ' ' + literal('}')
     return 'root ::= ' + root + '\n' + '\n'.join(definitions)

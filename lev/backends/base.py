@@ -172,6 +172,12 @@ def normalize_arguments(operation, args, kwargs):
     bound = inspect.signature(getattr(Lev, operation)).bind(None, *args, **kwargs)
     bound.apply_defaults()
     values = {k: v for k, v in bound.arguments.items() if k != "self"}
+    if operation == "generate":
+        if type(values["nullable"]) is not bool:
+            raise ValueError("nullable must be a boolean")
+        if not values["nullable"]:
+            # Keep default calls and their cache bindings unchanged.
+            values.pop("nullable")
     if "field_name" in values:
         name = values["field_name"]
         if name is None:
@@ -181,6 +187,14 @@ def normalize_arguments(operation, args, kwargs):
             raise ValueError("field_name must be a nonblank string or None")
     if type(values["instructions"]) is not str:
         raise ValueError("instructions must be a string")
+    requirements = values.pop("requirements")
+    if requirements is not None:
+        if type(requirements) is not list or any(
+            type(value) is not str or not value.strip() for value in requirements
+        ):
+            raise ValueError("requirements must be a list of nonblank strings or None")
+        if requirements:
+            values["requirements"] = requirements
     if operation == "noul":
         for key in ("criteria_false", "criteria_true"):
             if values[key] is not None and type(values[key]) is not str:
@@ -234,7 +248,10 @@ def validate_response(call, response):
             require(number(response.score, 0, len(keys)-1), "invalid score")
             require(response.legend == dict(enumerate(a["criteria"])), "incorrect score legend")
     elif op == "generate":
-        require(type(response.text) is str and (not a["min_length"] or bool(response.text)), "generated text must be a string and satisfy nonempty requirement")
+        require((response.text is None and a.get("nullable", False)) or
+                (type(response.text) is str and (not a["min_length"] or bool(response.text))),
+                "generated text must satisfy its string/null and nonempty contract" if a.get("nullable", False) else
+                "generated text must be a string and satisfy nonempty requirement")
     else:
         require(type(response.items) is list and all(type(x) is str for x in response.items), "items must be a list of strings")
         require(length(response.items, a["min_items"], a["max_items"]), "items violate count limits")

@@ -15,6 +15,10 @@ def _json(value):
 def _task_rules(operation, arguments):
     if operation == "generate":
         low, high = arguments["min_length"], arguments["max_length"]
+        if arguments.get("nullable", False):
+            return ("生成字符串或 JSON null；null 不加引号。" +
+                    ("非 null 时必须非空。" if low > 0 else "非 null 时允许空字符串。") +
+                    f"非 null 字符串的建议长度为 {low} 至 {high} 字符。")
         return ("生成文本，必须非空。" if low > 0 else "生成文本，允许空文本。") + \
             f"建议长度为 {low} 至 {high} 字符。"
     rules = f"返回 {arguments['min_items']} 至 {arguments['max_items']} 项。"
@@ -47,16 +51,30 @@ def messages(context, calls, *, batch=False, rule_dedup=False, repair_feedback=N
             "各任务独立回答，其他任务的答案不能作为依据。"
             "只返回一个 JSON 对象，唯一顶层字段为 answers，其值为按任务 ID 索引的对象。"
             "每个任务 ID 恰好出现一次，直接对应答案值；"
-            "generate 的值为字符串，generate_list 和 extract 的值为字符串数组，不加其他字段或包装。"
+            + ("generate 的值为字符串，仅明确允许 null 的任务可以返回 JSON null；"
+               "generate_list 和 extract 的值为字符串数组，不加其他字段或包装。"
+               if any(c.operation == "generate" and c.arguments.get("nullable", False) for c in calls) else
+               "generate 的值为字符串，generate_list 和 extract 的值为字符串数组，不加其他字段或包装。")
         )
     elif calls[0].operation == "generate":
-        contract += "只返回所需文本，不加 JSON 包装或引号。"
+        contract += ("只返回一个 JSON 字符串（带引号）或 JSON null（不带引号），不加对象包装。"
+                     if calls[0].arguments.get("nullable", False) else
+                     "只返回所需文本，不加 JSON 包装或引号。")
     else:
         contract += "只返回一个 JSON 对象，唯一字段 items 为字符串数组；允许零项时返回空数组。"
     parts.append(contract)
     if shared_rules:
         parts.append("共享段落仅适用于引用它的任务，在引用处按原顺序展开：\n" +
                      "\n\n".join(f"共享段落 {key}：\n{value}" for key, value in shared_rules.items()))
+    requirements = {}
+    for identity, task in tasks.items():
+        for requirement in dict.fromkeys(task["task"].get("requirements", [])):
+            requirements.setdefault(requirement, []).append(identity)
+    if requirements:
+        parts.append("任务要求（仅适用于列出的任务）\n" + "\n".join(
+            "、".join(_json(identity) for identity in identities) + " 要求：" + requirement
+            for requirement, identities in requirements.items()
+        ))
     for identity, task in tasks.items():
         instructions = task["task"]["instructions"]
         if isinstance(instructions, dict):
