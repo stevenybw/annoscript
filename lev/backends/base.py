@@ -172,6 +172,13 @@ def normalize_arguments(operation, args, kwargs):
     bound = inspect.signature(getattr(Lev, operation)).bind(None, *args, **kwargs)
     bound.apply_defaults()
     values = {k: v for k, v in bound.arguments.items() if k != "self"}
+    if "field_name" in values:
+        name = values["field_name"]
+        if name is None:
+            # Preserve the normalized arguments of existing, unnamed programs.
+            values.pop("field_name")
+        elif type(name) is not str or not name.strip():
+            raise ValueError("field_name must be a nonblank string or None")
     if type(values["instructions"]) is not str:
         raise ValueError("instructions must be a string")
     if operation == "noul":

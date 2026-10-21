@@ -13,7 +13,7 @@ from ._generation_policy import validate_policy, PinnedTokenCounter, effective_b
 from ._bounded_grammar import grammar as bounded_grammar, ensure_satisfiable
 from ._shared_rules import factor_rules, validate_rule_dedup
 from ._prompt import messages
-from ._batch_wire import FORMAT, batch_calls
+from ._batch_wire import FORMAT, batch_calls, wire_name
 
 
 def _unique_object(pairs):
@@ -94,6 +94,8 @@ class LLMAPIBackend(HTTPBackend):
         if batch:
             evidence.update(batch_response_format=FORMAT,
                             wire_call_ids={key: call.id for key, call in batch_calls(calls).items()})
+        elif calls[0].arguments.get("field_name") is not None:
+            evidence["wire_call_ids"] = {wire_name(calls[0], calls[0].id): calls[0].id}
         if batch and self.batch_rule_dedup:
             tasks = {c.id: {"task": {"instructions": c.arguments["instructions"]}} for c in calls}
             _, rule_evidence = factor_rules(tasks)

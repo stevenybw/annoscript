@@ -80,6 +80,11 @@ class Lev(ABC):
     serialized state/answer objects). None and [] mean no examples. Examples
     inherit this call's instructions, criteria and constraints, and are checked
     before dispatch. They teach task semantics, not facts about the current state.
+
+    Generation operations accept ``field_name``: a nonblank string used as the
+    model-visible task name, including batch answer keys. None preserves automatic
+    names. Names must be distinct within a physical request, including automatic
+    aliases; internal call IDs and response types remain unchanged.
     """
 
     def __init__(
@@ -134,6 +139,7 @@ class Lev(ABC):
         max_length_per_item: int,
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
+        field_name: str | None = None,
     ) -> ExtractResponse:
         """Extract verbatim passages using this instance's state and model.
 
@@ -171,6 +177,7 @@ class Lev(ABC):
         max_length: int,
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
+        field_name: str | None = None,
     ) -> GenerateResponse:
         """Generate text using this instance's state and model.
 
@@ -208,6 +215,7 @@ class Lev(ABC):
         max_length_per_item: int,
         max_num_tokens: int | None = None,
         examples: list[Example] | None = None,
+        field_name: str | None = None,
     ) -> GenerateListResponse:
         """Generate a list of texts using this instance's state and model.
 

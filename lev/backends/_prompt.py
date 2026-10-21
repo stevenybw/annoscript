@@ -5,7 +5,7 @@ import json
 from lev._data import thaw
 from ._example_layout import group_examples
 from ._shared_rules import factor_rules
-from ._batch_wire import batch_calls
+from ._batch_wire import batch_calls, wire_name
 
 
 def _json(value):
@@ -32,7 +32,7 @@ def _task_rules(operation, arguments):
 
 def messages(context, calls, *, batch=False, rule_dedup=False, repair_feedback=None):
     """Render detached arguments without changing calls, examples, or current state."""
-    identified = batch_calls(calls) if batch else {call.id: call for call in calls}
+    identified = batch_calls(calls) if batch else {wire_name(call, call.id): call for call in calls}
     tasks = {identity: {"operation": call.operation, "task": thaw(call.arguments)}
              for identity, call in identified.items()}
     shared_rules, _ = factor_rules(tasks) if batch and rule_dedup else ({}, {})
