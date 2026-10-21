@@ -5,7 +5,8 @@ import threading
 import unittest
 from unittest.mock import patch
 import httpx
-from lev.backends import InferenceContext, LLMAPIBackend, DecisionAPIBackend, BackendFatalError, InferenceError
+from lev.backends import InferenceContext, DecisionAPIBackend, BackendFatalError, InferenceError
+from lev._test_evaluation_http import FixtureLLMBackend as LLMAPIBackend
 from lev.backends.base import normalize_call
 from lev.server.worker import Worker, classification
 from lev.server.metrics import RequestMeter
@@ -44,7 +45,7 @@ class LayoutTests(unittest.IsolatedAsyncioTestCase):
                 legacy,qwen=bodies['legacy'],bodies['qwen_vllm']
                 self.assertEqual([m['role'] for m in qwen['messages']],['system','user'])
                 self.assertEqual(legacy['messages'],qwen['messages'])
-                self.assertIn('source_field',qwen['messages'][0]['content'])
+                self.assertIn('输入的顶层字段 "text"',qwen['messages'][0]['content'])
                 if policy:
                     self.assertTrue(qwen['messages'][0]['content'].startswith(policy+'\n'))
                 from lev._test_evaluation_http import llm_calls
@@ -87,7 +88,7 @@ class ProtocolTests(StoreTests):
         async def run():
             started=asyncio.Event();release=asyncio.Event()
             async def handler(req):
-                body=json.loads(req.content);state=json.loads(body['messages'][-1]['content'])['state'];calls.append(state)
+                body=json.loads(req.content);state=body['messages'][-1]['content'];calls.append(state)
                 if len(calls)==4:started.set()
                 await started.wait()
                 if state=='0':return httpx.Response(400,json={'error':{'message':'System message must be at the beginning.'}})

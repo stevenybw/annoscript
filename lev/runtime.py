@@ -18,6 +18,7 @@ from lev.backends.base import (InferenceContext, normalize_call, validate_respon
                                DECISION_OPERATIONS, BackendFatalError, InferenceError,
                                LLM_BATCH_DEFAULTS, validate_batch_options)
 from lev.client import Result, ResultError
+from lev._speculation import Speculation
 
 
 _WAIT, _SKIP, _END = object(), object(), object()
@@ -54,6 +55,13 @@ class _Request:
     repair_attempt: int = 0
     repair_parent: str | None = None
     repair_feedback: str | None = None
+    key: object = None
+    speculative: bool = False
+    discarded: bool = False
+    origins: list = field(default_factory=list)
+    error: object = None
+    error_batch: str | None = None
+    repairable: bool = False
 
 
 class AsyncResultStream:
@@ -132,6 +140,9 @@ class _Run:
         self.pending = deque()
         self.allocations = {}
         self.cache = {}
+        self._call_sequence = 0
+        self.revision = 0
+        self.speculation = Speculation(self) if self.mode == "speculative" else None
         self.return_values = []
         self.done = False
         self.root = next(r.id for r in self.plan.regions if r.kind == "root")
@@ -231,7 +242,29 @@ class _Run:
         for vid, value in zip(inst.task.outputs, values):
             self.outputs[vid, inst.ctx] = value
         inst.status, inst.result = "done", result
+        self.revision += 1
         self.runtime._record("task_done", self, task=inst.task.id, path=inst.ctx, skipped=result is _SKIP)
+
+    def request_key(self, task, ctx):
+        request = self.requests[task.request]
+        key = request.id, ctx[:len(request.scope)]
+        if not request.reusable:
+            key += (task.id, ctx)
+        return key
+
+    def call_id(self):
+        return f"{self.id}-q{self._call_sequence}"
+
+    def new_request(self, call, waiters, **options):
+        self._call_sequence += 1
+        return _Request(call, waiters, **options)
+
+    def all_requests(self):
+        requests = list(self.cache.values())
+        if self.speculation is not None:
+            seen = {id(r) for r in requests}
+            requests.extend(r for r in self.speculation.requests if id(r) not in seen)
+        return requests
 
     def step(self, inst):
         t, ctx = inst.task, inst.ctx
@@ -251,7 +284,8 @@ class _Run:
                 inst.entered, inst.status = True, "loop"
                 return True
             active = sum(not self.region_done(t.body, ctx + (i,)) for i in inst.iterations)
-            if not inst.exhausted and active < (1 if self.mode in t.serial_modes else self.runtime.loop_window):
+            execution_mode = "eager" if self.speculation is not None else self.mode
+            if not inst.exhausted and active < (1 if execution_mode in t.serial_modes else self.runtime.loop_window):
                 try:
                     item = next(inst.iterator)
                 except StopIteration:
@@ -288,15 +322,20 @@ class _Run:
             self.finish(inst)
         elif isinstance(t, p.Infer):
             request = self.requests[t.request]
-            key = request.id, ctx[:len(request.scope)]
-            if not request.reusable:
-                key += (t.id, ctx)
+            key = self.request_key(t, ctx)
             args, kwvalues = self.value(t.arguments, ctx)
             # Every site's argument binding is checked even when its request is cached.
-            call = normalize_call(f"{self.id}-q{len(self.cache)}", request.operation, args, dict(zip(t.keywords, kwvalues)), self.context)
+            call = normalize_call(self.call_id(), request.operation, args, dict(zip(t.keywords, kwvalues)), self.context)
             cached = self.cache.get(key)
+            if cached is None and self.speculation is not None:
+                self.speculation.retire_mismatches(key, call, t, ctx)
+                cached = self.speculation.lookup(key, call)
+                if cached is not None:
+                    self.cache[key] = cached
+                    cached.discarded = False
+                    self.runtime._record("speculation_adopted", self, task=t.id, path=ctx, call=cached.call.id)
             if cached is None:
-                cached = self.cache[key] = _Request(call, [inst])
+                cached = self.cache[key] = self.new_request(call, [inst], key=key)
                 self.runtime._record("infer_ready", self, task=t.id, path=ctx, call=call.id, operation=call.operation)
             else:
                 cached.waiters.append(inst)
@@ -304,6 +343,11 @@ class _Run:
             inst.status = "infer"
             if cached.status == "done":
                 self.finish(inst, [cached.response])
+            elif cached.status == "error":
+                if cached.repairable:
+                    self.runtime._repair_batch(self, [cached], {cached.call.id: cached.error}, cached.error_batch)
+                else:
+                    raise cached.error
         elif isinstance(t, p.Branch):
             selected = bool(self.expr(t.condition, ctx))
             self.launch(t.then_region if selected else t.else_region, ctx)
@@ -446,6 +490,8 @@ class LevRuntime:
         return stream
 
     def _remove_run(self, run, cancel=False):
+        if run.speculation is not None:
+            run.speculation.prune(final=True)
         run.done = True
         run.stream.runs.discard(run)
         self._runs.pop(run.id, None)
@@ -512,9 +558,13 @@ class LevRuntime:
         if requests[0].repair_attempt:
             details.update(repair_attempt=requests[0].repair_attempt, repair_parent=requests[0].repair_parent)
         self._record("http_submitted", run, batch=batch_id, backend=kind, model=getattr(backend, "model", None),
-                     calls=[c.id for c in calls], questions=len(calls), **details)
+                     calls=[c.id for c in calls], questions=len(calls),
+                     **({"speculative_calls": [r.call.id for r in requests if not r.waiters]}
+                        if run.speculation is not None else {}), **details)
         if kind == "decision":
-            coroutine = backend.infer_batch(run.context, calls)
+            options = {"allow_partial": True} if (run.speculation is not None and
+                       getattr(backend, "supports_partial_answers", False) is True) else {}
+            coroutine = backend.infer_batch(run.context, calls, **options)
         elif batch_plan is not None:
             prepared = ({"prepared": batch_plan.prepared} if
                         getattr(backend, "supports_prepared_batch", False) is True else {})
@@ -560,7 +610,25 @@ class LevRuntime:
                 "回答缺失、被截断或不符合任务要求。请检查结构、数量、非空要求和原文来源；字符长度为建议"
             )
             request.status = "queued"
+            request.error = None
+            request.repairable = False
         return True
+
+    def _speculative_error(self, run, request, error, batch, *, repairable):
+        if isinstance(error, BackendFatalError):
+            self._fail_run(run, error)
+            return
+        request.status, request.error = "error", error
+        request.error_batch, request.repairable = batch, repairable
+        run.revision += 1
+        if request.waiters:
+            if repairable:
+                self._repair_batch(run, [request], {request.call.id: error}, batch)
+            else:
+                self._fail_run(run, error, request.waiters[0])
+        else:
+            self._record("speculation_error_deferred", run, call=request.call.id,
+                         code=getattr(error, "code", "execution_failed"))
 
     def _receive(self):
         while self._events:
@@ -575,7 +643,7 @@ class LevRuntime:
                 errors = dict(getattr(output, "errors", {})) if is_batch else {}
                 if (set(responses) & set(errors) or set(responses) | set(errors) != {r.call.id for r in requests}
                         or any(not isinstance(error, InferenceError) for error in errors.values())
-                        or (kind == "decision" and errors)):
+                        or (kind == "decision" and errors and run.speculation is None)):
                     raise InferenceError("backend returned incorrect call IDs",
                         code="invalid_batch_output" if kind == "llm" and is_batch else "invalid_response")
                 for request in requests:
@@ -583,13 +651,22 @@ class LevRuntime:
                         try:
                             validate_response(request.call, responses[request.call.id])
                         except InferenceError as exc:
-                            if kind != "llm" or len(requests) < 2:
+                            if run.speculation is None and (kind != "llm" or len(requests) < 2):
                                 raise
                             errors[request.call.id] = exc
             except asyncio.CancelledError:
                 self._record("http_cancelled", run, batch=batch, backend=kind)
             except Exception as exc:
                 self._record("http_failed", run, batch=batch, backend=kind, **(getattr(exc, "metadata", {}) or metadata))
+                if run.speculation is not None:
+                    if not run.done:
+                        for request in requests:
+                            self._speculative_error(run, request, exc, batch,
+                                repairable=kind == "llm" and len(requests) > 1 and
+                                getattr(exc, "code", None) in ("invalid_batch_output", "incomplete_batch_generation"))
+                            if run.done:
+                                break
+                    continue
                 if (not run.done and kind == "llm" and len(requests) > 1
                         and getattr(exc, "code", None) in ("invalid_batch_output", "incomplete_batch_generation")):
                     self._repair_batch(run, requests, {r.call.id: exc for r in requests}, batch)
@@ -601,13 +678,24 @@ class LevRuntime:
                              **({"failed_calls": list(errors)} if errors else {}), **metadata)
                 if run.done:
                     continue
-                if errors and not self._repair_batch(run, requests, errors, batch):
+                if errors and run.speculation is not None:
+                    for request in requests:
+                        if request.call.id in errors:
+                            self._speculative_error(run, request, errors[request.call.id], batch,
+                                                    repairable=kind == "llm" and len(requests) > 1)
+                            if run.done:
+                                break
+                    if run.done:
+                        continue
+                elif errors and not self._repair_batch(run, requests, errors, batch):
                     continue
                 for request in requests:
                     if request.call.id in errors:
                         continue
                     request.status = "done"
+                    request.error = None
                     request.response = responses[request.call.id]
+                    run.revision += 1
                     for inst in request.waiters:
                         run.finish(inst, [request.response])
 
@@ -618,7 +706,11 @@ class LevRuntime:
         while more:
             more = False
             for run in list(self._runs.values()):
-                queued = [r for r in run.cache.values() if r.status == "queued"]
+                if run.speculation is not None:
+                    if not run.speculation.ready:
+                        continue
+                    run.speculation.prune()
+                queued = [r for r in run.all_requests() if r.status == "queued" and not r.discarded]
                 for kind, limit in (("decision", self.max_decision_inflight), ("llm", self.max_llm_inflight)):
                     eligible = [r for r in queued if (r.call.operation in DECISION_OPERATIONS) == (kind == "decision") and r.status == "queued"]
                     if eligible and counts[kind] < limit:
@@ -641,7 +733,7 @@ class LevRuntime:
                         else:
                             repairs = [r for r in eligible if r.repair_attempt]
                             if not repairs and any(r.status == "queued" and r.repair_attempt
-                                    for other in self._runs.values() for r in other.cache.values()):
+                                    for other in self._runs.values() for r in other.all_requests()):
                                 if release is not None:
                                     release()
                                 continue
@@ -682,6 +774,8 @@ class LevRuntime:
                 progress = 0
                 for run in list(self._runs.values()):
                     progress += run.advance(self.local_task_budget)
+                    if not run.done and run.speculation is not None:
+                        progress += run.speculation.advance(self.local_task_budget)
                 self._dispatch()
                 for stream in list(self._submissions.values()):
                     if not stream.closed and not stream.finished and not stream.pending and not stream.runs:

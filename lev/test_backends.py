@@ -61,9 +61,9 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(body["thinking"], {"type": "disabled"})
                     self.assertTrue(body["messages"][0]["content"].startswith("共享政策\n"))
                     payload = json.loads(body["messages"][-1]["content"])
-                    self.assertEqual(payload["state"], {"text": "原文甲", "other": "独立来源广州"})
+                    self.assertEqual(payload, {"text": "原文甲", "other": "独立来源广州"})
                     if operation == "extract":
-                        self.assertEqual(payload["task"]["source_field"], "other")
+                        self.assertIn('输入的顶层字段 "other"', body["messages"][0]["content"])
                     if operation == "generate":
                         self.assertNotIn("response_format", body)
                         self.assertEqual(body["max_tokens"], 16)

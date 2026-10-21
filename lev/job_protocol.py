@@ -48,7 +48,7 @@ def validate_request(value):
         raise ValueError("unsupported job protocol version")
     if type(value["ir"]) is not dict or ir_sha256(value["ir"]) != value["ir_sha256"]:
         raise ValueError("IR digest mismatch")
-    if value["mode"] not in ("eager", "strict"):
+    if value["mode"] not in ("eager", "strict", "speculative"):
         raise ValueError("invalid execution mode")
     if type(value["inputs"]) is not list or not value["inputs"]:
         raise ValueError("a job needs at least one input")
@@ -119,7 +119,7 @@ def validate_status(job):
         raise RemoteProtocolError("invalid job status fields")
     if (not all(nonempty(job[k]) for k in ("job_id", "ir_sha256", "release_id"))
             or len(job["ir_sha256"]) != 64 or any(c not in "0123456789abcdef" for c in job["ir_sha256"])
-            or job["mode"] not in ("strict", "eager")
+            or job["mode"] not in ("strict", "eager", "speculative")
             or job["state"] not in STATES or not integer(job["pause_generation"])):
         raise RemoteProtocolError("invalid job status")
     indices, counts = job["input_indices"], job["counts"]

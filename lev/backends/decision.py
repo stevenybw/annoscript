@@ -7,7 +7,9 @@ from ._example_layout import EXAMPLE_CONTRACT
 
 
 class DecisionAPIBackend(HTTPBackend):
-    async def infer_batch(self, context, calls):
+    supports_partial_answers = True
+
+    async def infer_batch(self, context, calls, *, allow_partial=False):
         if not calls or len({c.id for c in calls}) != len(calls):
             raise ValueError("a batch requires distinct calls")
         questions = {}
@@ -39,25 +41,32 @@ class DecisionAPIBackend(HTTPBackend):
         current_call = None
         try:
             answers = data["answers"]
-            if type(answers) is not dict or set(answers) != set(questions):
+            if (type(answers) is not dict or set(answers) - set(questions)
+                    or not allow_partial and set(answers) != set(questions)):
                 raise ValueError()
-            results = {}
+            results, errors = {}, {}
             for call in calls:
                 current_call = call.id
-                answer = answers[call.id]
-                if answer["type"] != call.operation:
-                    raise ValueError()
-                if call.operation == "noul":
-                    response = NoulResponse(answer["noul"])
-                elif call.operation == "choice":
-                    response = ChoiceResponse(answer["choice"], answer["confidence"], answer["probabilities"])
-                else:
-                    def indexed(mapping):
-                        if type(mapping) is not dict or any(type(k) is not str or str(int(k)) != k for k in mapping):
-                            raise ValueError()
-                        return {int(k): v for k, v in mapping.items()}
-                    response = ScoreResponse(indexed(answer["probabilities"]), answer["score"], indexed(answer["legend"]), answer["confidence"])
-                results[call.id] = validate_response(call, response)
+                try:
+                    answer = answers[call.id]
+                    if answer["type"] != call.operation:
+                        raise ValueError()
+                    if call.operation == "noul":
+                        response = NoulResponse(answer["noul"])
+                    elif call.operation == "choice":
+                        response = ChoiceResponse(answer["choice"], answer["confidence"], answer["probabilities"])
+                    else:
+                        def indexed(mapping):
+                            if type(mapping) is not dict or any(type(k) is not str or str(int(k)) != k for k in mapping):
+                                raise ValueError()
+                            return {int(k): v for k, v in mapping.items()}
+                        response = ScoreResponse(indexed(answer["probabilities"]), answer["score"], indexed(answer["legend"]), answer["confidence"])
+                    results[call.id] = validate_response(call, response)
+                except (KeyError, TypeError, ValueError, InferenceError):
+                    if not allow_partial:
+                        raise
+                    errors[call.id] = InferenceError("invalid Decision answer", code="invalid_response",
+                                                     metadata=metadata, call_id=call.id)
         except (KeyError, TypeError, ValueError, InferenceError):
             raise InferenceError("invalid Decision answers", code="invalid_response", metadata=metadata, call_id=current_call) from None
-        return BatchResult(results, metadata)
+        return BatchResult(results, metadata, errors)

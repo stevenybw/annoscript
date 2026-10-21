@@ -91,8 +91,8 @@ class RemoteLevClient:
         if auth_token is not None and (type(auth_token) is not str or not auth_token.strip()
                                        or "\r" in auth_token or "\n" in auth_token):
             raise ValueError("auth_token must be a nonempty single-line string or None")
-        if mode not in ("eager", "strict"):
-            raise ValueError("mode must be eager or strict")
+        if mode not in ("eager", "strict", "speculative"):
+            raise ValueError("mode must be eager, strict or speculative")
         if type(optimize) is not bool:
             raise TypeError("optimize must be a boolean")
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:

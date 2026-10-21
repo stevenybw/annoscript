@@ -5,7 +5,9 @@ import json
 import math
 import unittest
 import httpx
-from lev.backends import InferenceContext, LLMAPIBackend, InferenceError
+from lev.backends import InferenceContext, InferenceError
+from lev._test_evaluation_http import FixtureLLMBackend as LLMAPIBackend
+from lev._test_evaluation_http import llm_calls
 from lev.backends.base import normalize_call, validate_response
 from lev.backends._generation_policy import effective_budget
 from lev.backends._bounded_grammar import grammar
@@ -88,8 +90,8 @@ class AdvisoryWireTests(unittest.IsolatedAsyncioTestCase):
         sent=[]
         def handler(req):
             body=json.loads(req.content);sent.append(body)
-            tasks=json.loads(body['messages'][-1]['content'])['tasks']
-            answers={k:({'type':'generate','text':'甲'*100} if v['operation']=='generate' else {'type':'generate_list','items':['乙'*100]}) for k,v in tasks.items()}
+            tasks=llm_calls(body)[1]
+            answers={call.id:({'type':'generate','text':'甲'*100} if call.operation=='generate' else {'type':'generate_list','items':['乙'*100]}) for _,call in tasks}
             return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'answers':answers})}}]})
         b=LLMAPIBackend('https://offline.invalid','fixture','q',profile='qwen_vllm',request_policy=policy(),_token_counter=lambda p:1,transport=httpx.MockTransport(handler))
         rt=LevRuntime(FakeBackend(),b)

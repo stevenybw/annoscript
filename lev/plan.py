@@ -19,6 +19,11 @@ Both report the first observed error, stop dispatch on failure, best-effort canc
 in-flight work, and await all active work, including checks, before success.
 Resource exhaustion is outside the static expression safety model.
 
+Speculative execution uses the same formal dependencies and serial loop rules
+as eager. A separate bounded evaluator may prepare reusable inference requests
+across unknown control gates, but never commits local effects or checks. Results
+and request-local errors are adopted only on demand with matching arguments.
+
 BoundExpr captures value bindings, not copies of their containers. State and
 inference responses are read-only; Store addresses local storage. Branch.done
 means its predicate is known; Join.done means its selected region has completed,
@@ -48,7 +53,7 @@ from typing import ClassVar, Literal, Union, get_args, get_origin, get_type_hint
 
 from lev import ir
 
-FailureMode = Literal["eager", "strict"]
+FailureMode = Literal["eager", "strict", "speculative"]
 
 
 class PlanDecodeError(ValueError):
@@ -252,7 +257,7 @@ class ExecutionPlan:
 
     def dependencies_for(self, mode: FailureMode = "eager") -> tuple[Dependency, ...]:
         """Select edges; region, loop, demand and root-completion rules still apply."""
-        if mode not in ("eager", "strict"):
+        if mode not in ("eager", "strict", "speculative"):
             raise ValueError(f"unknown failure mode {mode!r}")
         return tuple(d for d in self.dependencies
                      if mode == "strict" or (d.kind != "failure_order" and not d.strict_only))

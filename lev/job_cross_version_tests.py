@@ -76,7 +76,7 @@ def main():
             api, ready = start(args.server_python, "api")
             worker, _ = start(args.server_python, "worker")
             url = ready["url"]
-            assert client(url, "matrix")["matrix"] == "8 combinations passed"
+            assert client(url, "matrix")["matrix"] == "12 combinations passed"
 
             # Real independent API and worker restarts, retaining the same DB.
             from lev.jobs import LevJobClient
@@ -111,7 +111,7 @@ def main():
                 for pipe in (process.stdin, process.stdout, process.stderr):
                     if pipe is not None:
                         pipe.close()
-    print("Python 3.10 durable client -> Python 3.12 API/worker: OK (8 combinations, lost responses, restarts, killed owner)")
+    print("Python 3.10 durable client -> Python 3.12 API/worker: OK (12 combinations, lost responses, restarts, killed owner)")
 
 
 if __name__ == "__main__":

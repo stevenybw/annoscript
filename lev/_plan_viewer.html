@@ -387,6 +387,7 @@
         <select id="mode" aria-label="失败模式">
           <option value="eager">eager · 允许失败前并发</option>
           <option value="strict">strict · 保留失败顺序</option>
+          <option value="speculative">speculative · 提前推理，按路径采用</option>
         </select></label
       >
       <label><input type="checkbox" id="transitive" />传递边</label
@@ -497,7 +498,9 @@
         }
         el(
           "p",
-          mode === "eager"
+          mode === "speculative"
+            ? "图中保留正式依赖。推测调用可跨控制屏障提前提交，结果仅在实际路径采用。推测候选：" + report.speculative_candidates.join(", ")
+            : mode === "eager"
             ? "独立请求可越过待完成的约束检查；成功返回仍须通过全部检查，失败时可能已有额外调用发出。"
             : "保留失败顺序；本 request 的调用通常需要等待前序操作。",
           panel,

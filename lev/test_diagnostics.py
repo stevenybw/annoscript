@@ -3,7 +3,8 @@ import asyncio,json,tempfile,threading,unittest
 from pathlib import Path
 from unittest.mock import patch
 import httpx
-from lev.backends import LLMAPIBackend,DecisionAPIBackend,InferenceContext,InferenceError
+from lev.backends import DecisionAPIBackend, InferenceContext, InferenceError
+from lev._test_evaluation_http import FixtureLLMBackend as LLMAPIBackend
 from lev.backends.base import normalize_call
 from lev.server.store import Store
 from lev.server.releases import Releases

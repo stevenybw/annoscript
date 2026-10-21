@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch, Mock
 import httpx
-from lev.backends import InferenceContext, LLMAPIBackend, InferenceError, BackendFatalError
+from lev.backends import InferenceContext, InferenceError, BackendFatalError
+from lev._test_evaluation_http import FixtureLLMBackend as LLMAPIBackend
 from lev.backends.base import normalize_call
 from lev.backends._generation_policy import SAMPLING, PinnedTokenCounter
 from lev.server.releases import manifest
@@ -160,7 +161,7 @@ class P0DiagnosticWorkerTests(DiagnosticWorkerTests):
         sent=[];events=[]
         def handle(req):
             sent.append(req);return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':'yes'}}]})
-        def count(body):return 8192 if json.loads(body['messages'][-1]['content'])['state']=='too long' else 10
+        def count(body):return 8192 if body['messages'][-1]['content']=='too long' else 10
         def factory(_):
             return (DecisionAPIBackend('https://offline.invalid','fixture','model',transport=httpx.MockTransport(handle)),
                     LLMAPIBackend('https://offline.invalid','fixture','model',profile='qwen_vllm',request_policy=policy(),_token_counter=count,transport=httpx.MockTransport(handle)))

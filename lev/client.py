@@ -36,8 +36,8 @@ class LevClient:
             raise TypeError("runtime must be a LevRuntime")
         if runtime._loop is not None or runtime.closed or getattr(runtime, "_client_owner", None) is not None:
             raise ValueError("client requires an unstarted runtime")
-        if mode not in ("eager", "strict"):
-            raise ValueError("mode must be eager or strict")
+        if mode not in ("eager", "strict", "speculative"):
+            raise ValueError("mode must be eager, strict or speculative")
         self.runtime, self.mode = runtime, mode
         runtime._client_owner = self
         self._loop = self._thread = None

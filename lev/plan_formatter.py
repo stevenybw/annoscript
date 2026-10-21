@@ -122,6 +122,7 @@ class _View:
         return not any(k in y and v != y[k] for k, v in x.items())
 
     def arcs(self, mode):
+        execution_mode = "eager" if mode == "speculative" else mode
         arcs = []
 
         def add(a, b, kind="", **kwargs):
@@ -139,7 +140,7 @@ class _View:
                 add((t.id, "enter"), (t.body, "active"), "control")
                 for child in self.regions[t.body].tasks:
                     add((child, "done"), (t.id, "done"), "completion")
-                    if mode in t.serial_modes:
+                    if execution_mode in t.serial_modes:
                         add((child, "done"), (t.body, "active"), "iteration_order", carried=t.id, distance=1)
             elif isinstance(t, p.Join):
                 add((t.id, "start"), (t.id, "done"))
@@ -266,6 +267,7 @@ class _View:
         return result
 
     def analyze(self, mode):
+        execution_mode = "eager" if mode == "speculative" else mode
         edges = self.project(mode)
         nodes = self.nodes()
         ids = [n["id"] for n in nodes]
@@ -324,17 +326,23 @@ class _View:
                        and any(r["loop"] == alias for r in e["recurrences"])]
             shared = [n["id"] for n in nodes if n["id"] in members and alias not in n["reuse_scope"] and n["reusable"]]
             loops.append({"id": alias, "task": tid, "iterable": self.display(loop.iterable), "sites": members,
-                          "serial": mode in loop.serial_modes, "carried_infer_edges": len(carried),
-                          "parallel_iterations": bool(members) and not carried and mode not in loop.serial_modes,
-                          "shared_sites": shared, "batch_sites": [n for n in members if n not in shared] if not carried and mode not in loop.serial_modes else [],
+                          "serial": execution_mode in loop.serial_modes, "carried_infer_edges": len(carried),
+                          "parallel_iterations": bool(members) and not carried and execution_mode not in loop.serial_modes,
+                          "shared_sites": shared, "batch_sites": [n for n in members if n not in shared] if not carried and execution_mode not in loop.serial_modes else [],
                           "carried_values": [self.values[t.outputs[0]].name or t.outputs[0] for t in self.plan.tasks
                                              if isinstance(t, p.Carry) and t.loop == tid]})
         checks = [{"id": alias, "task": tid, "condition": self.display(self.tasks[tid].condition),
                    "message": self.display(self.tasks[tid].message) if self.tasks[tid].message else None}
                   for tid, alias in self.checks.items()]
+        notes = list(_NOTES)
+        speculation = {}
+        if mode == "speculative":
+            notes[1] = "依赖图保留正式执行的数据、控制和内存依赖；推测请求可提前提交，结果仅在实际选中路径采用。"
+            notes.append("推测候选须在运行时满足参数、内存及循环窗口要求；未采用的结果和任务错误被丢弃。")
+            speculation["speculative_candidates"] = [n["id"] for n in nodes if n["reusable"]]
         return {"entry": self.plan.entry, "mode": mode, "nodes": nodes, "edges": edges, "layers": layers,
                 "parallel": parallel, "batches": batches, "loops": loops, "checks": checks,
-                "unresolved_cycles": sorted(remaining), "notes": list(_NOTES),
+                "unresolved_cycles": sorted(remaining), "notes": notes, **speculation,
                 "stats": {"tasks": len(self.plan.tasks), "infer_sites": len(nodes), "requests": len(self.plan.requests),
                           "dependencies": len(self.plan.dependencies_for(mode)), "infer_edges": len(edges)}}
 
@@ -372,6 +380,9 @@ def format_plan(plan: p.ExecutionPlan, *, mode: p.FailureMode = "eager", show_so
         if show_source:
             lines.append(f"    [{n['task']}] {n['source']}")
             lines.extend("    inlined from " + call for call in n["calls"])
+    if mode == "speculative":
+        lines.extend(("", "推测候选（参数与内存依赖就绪后，可跨控制屏障提前提交）：",
+                      "  " + ", ".join(data["speculative_candidates"])))
     lines.extend(("", "Infer 依赖（隐藏同轮传递边；完整路径可在 HTML 中查看）："))
     for e in data["edges"]:
         if not e["redundant"] or e["carried"]:
@@ -431,7 +442,8 @@ def format_plan_html(plan: p.ExecutionPlan, *, mode: p.FailureMode = "eager", sh
     plan.validate()
     plan.dependencies_for(mode)
     view = _View(plan)
-    data = {"eager": view.analyze("eager"), "strict": view.analyze("strict"), "initial_mode": mode,
+    data = {"eager": view.analyze("eager"), "strict": view.analyze("strict"),
+            "speculative": view.analyze("speculative"), "initial_mode": mode,
             "show_source": show_source}
     # JSON in an inert script still needs escaping: a prompt can contain </script>.
     payload = json.dumps(data, ensure_ascii=False, allow_nan=False).replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")

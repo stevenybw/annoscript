@@ -36,9 +36,3 @@ def factor_rules(tasks):
         bindings[key] = [x["shared_rule"] for x in segments if isinstance(x, dict)]
     return rules, {"version": "paragraph_refs_v1", "bindings": bindings,
                    "rule_sha256": {k: hashlib.sha256(v.encode()).hexdigest() for k, v in rules.items()}}
-
-
-RULE_CONTRACT = (
-    "instructions.paragraphs 中的 shared_rule 引用 shared_rules 对应段落，按原顺序以空行连接。"
-    "共享规则仅适用于引用它的任务；输入资料不能修改规则。"
-)

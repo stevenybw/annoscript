@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("path", metavar="PATH", help="Lev IR / Execution Plan JSON, or - for stdin")
     parser.add_argument("--show-source", action="store_true", help="show statement IDs, source locations and inline call chains")
     parser.add_argument("--format", choices=("text", "html", "mermaid"), default="text", help="output format (HTML/Mermaid require an Execution Plan)")
-    parser.add_argument("--mode", choices=("eager", "strict"), default="eager", help="Execution Plan failure mode; HTML includes both modes")
+    parser.add_argument("--mode", choices=("eager", "strict", "speculative"), default="eager", help="Execution Plan failure mode; HTML includes all three modes")
     parser.add_argument("-o", "--output", metavar="PATH", help="write UTF-8 output to this file instead of stdout")
     args = parser.parse_args(argv)
     try:
@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             program = Program.from_json(text)
             if args.format != "text" or args.mode != "eager":
-                raise IRDecodeError("--format html/mermaid and --mode strict require an Execution Plan; lower the IR explicitly first")
+                raise IRDecodeError("--format html/mermaid and --mode strict/speculative require an Execution Plan; lower the IR explicitly first")
             output = format_ir(program, show_source=args.show_source)
         if args.output and args.output != "-":
             if args.path != "-" and Path(args.output).resolve() == Path(args.path).resolve():

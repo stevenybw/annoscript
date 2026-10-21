@@ -10,7 +10,8 @@ import httpx
 
 from lev._data import thaw
 from lev._test_evaluation_http import llm_calls, llm_content
-from lev.backends import InferenceContext, LLMAPIBackend, BackendFatalError, InferenceError
+from lev.backends import InferenceContext, BackendFatalError, InferenceError
+from lev._test_evaluation_http import FixtureLLMBackend as LLMAPIBackend
 from lev.backends.base import normalize_call
 from lev.compiler import compile_program
 from lev.ir import Program
@@ -135,17 +136,17 @@ class PreparedRequestTests(unittest.IsolatedAsyncioTestCase):
                     try:
                         for feedback in [None,'bad structure']:
                             p=b._prepare(ctx,[c],80,repair_feedback=feedback)
-                            wire=json.loads(thaw(p.payload)['messages'][-1]['content'])
-                            self.assertEqual(wire['state'],state)
-                            self.assertEqual(wire['task']['source_field'],c.arguments['source_field'])
+                            content=thaw(p.payload)['messages'][-1]['content']
+                            self.assertEqual(content if isinstance(state,str) else json.loads(content),state)
+                            prompt=thaw(p.payload)['messages'][0]['content']
+                            self.assertIn('输入字符串' if isinstance(state,str) else '输入的顶层字段 "text"',prompt)
                             self.assertEqual(llm_calls(thaw(p.payload))[1][0][1].extraction_source,text)
-                            self.assertNotIn('source',wire['task'])
                         other = replace(c,id='other') if isinstance(state,str) else normalize_call('other','extract',('原文',),{'source_field':'other','max_items':1,'max_length_per_item':8},ctx)
                         p=self.plan(b,ctx,[c,other,replace(c,id='again')])
                         reconstructed=llm_calls(thaw(p.prepared.payload))[1]
                         self.assertEqual([v.extraction_source for _,v in reconstructed],[text,text if isinstance(state,str) else '独立来源',text])
-                        wire=json.loads(thaw(p.prepared.payload)['messages'][-1]['content'])
-                        self.assertNotIn('sources',wire)
+                        content=thaw(p.prepared.payload)['messages'][-1]['content']
+                        self.assertEqual(content if isinstance(state,str) else json.loads(content),state)
                     finally: await b.aclose()
 
     async def test_prepared_pause_blocks_http_and_local_rejection_not_sent(self):

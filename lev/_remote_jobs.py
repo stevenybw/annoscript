@@ -99,8 +99,8 @@ def _finalize(session):
 class RemoteAdapter:
     def __init__(self, base_url, auth_token=None, *, mode="eager", optimize=True,
                  timeout=30.0, transport=None):
-        if mode not in ("eager", "strict"):
-            raise ValueError("mode must be eager or strict")
+        if mode not in ("eager", "strict", "speculative"):
+            raise ValueError("mode must be eager, strict or speculative")
         if type(optimize) is not bool:
             raise TypeError("optimize must be a boolean")
         self.mode, self.optimize = mode, optimize
