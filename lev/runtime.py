@@ -142,6 +142,7 @@ class _Run:
         self.cache = {}
         self._call_sequence = 0
         self.revision = 0
+        self.local_ready = False
         self.speculation = Speculation(self) if self.mode == "speculative" else None
         self.return_values = []
         self.done = False
@@ -243,6 +244,7 @@ class _Run:
             self.outputs[vid, inst.ctx] = value
         inst.status, inst.result = "done", result
         self.revision += 1
+        self.local_ready = False
         self.runtime._record("task_done", self, task=inst.task.id, path=inst.ctx, skipped=result is _SKIP)
 
     def request_key(self, task, ctx):
@@ -377,6 +379,7 @@ class _Run:
 
     def advance(self, budget):
         count = 0
+        self.local_ready = False
         while count < budget and not self.done:
             changed = False
             for _ in range(len(self.pending)):
@@ -384,7 +387,12 @@ class _Run:
                 if inst.status not in ("pending", "loop"):
                     continue
                 try:
+                    revision = self.revision
                     progress = self.step(inst)
+                    if progress and self.revision == revision:
+                        # Region/iterator progress and request adoption also
+                        # invalidate a completed private candidate scan.
+                        self.revision += 1
                 except Exception as exc:
                     self.runtime._fail_run(self, exc, inst)
                     return count + 1
@@ -396,6 +404,7 @@ class _Run:
                     if count >= budget:
                         break
             if not changed:
+                self.local_ready = True
                 break
         if not self.done and self.region_done(self.root, ()):
             try:
@@ -707,12 +716,16 @@ class LevRuntime:
             more = False
             for run in list(self._runs.values()):
                 if run.speculation is not None:
-                    if not run.speculation.ready:
+                    if not run.local_ready or not run.speculation.ready:
                         continue
                     run.speculation.prune()
                 queued = [r for r in run.all_requests() if r.status == "queued" and not r.discarded]
                 for kind, limit in (("decision", self.max_decision_inflight), ("llm", self.max_llm_inflight)):
+                    if run.speculation is not None and kind != run.speculation.phase:
+                        continue
                     eligible = [r for r in queued if (r.call.operation in DECISION_OPERATIONS) == (kind == "decision") and r.status == "queued"]
+                    if kind == "llm" and run.speculation is not None:
+                        eligible = [r for r in eligible if r.waiters or id(r) in run.speculation.selected_requests]
                     if eligible and counts[kind] < limit:
                         release = None
                         if self.request_slots is not None:

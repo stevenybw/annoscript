@@ -337,8 +337,8 @@ class _View:
         notes = list(_NOTES)
         speculation = {}
         if mode == "speculative":
-            notes[1] = "依赖图保留正式执行的数据、控制和内存依赖；推测请求可提前提交，结果仅在实际选中路径采用。"
-            notes.append("推测候选须在运行时满足参数、内存及循环窗口要求；未采用的结果和任务错误被丢弃。")
+            notes[1] = "依赖图保留正式执行的数据、控制和内存依赖；每条输入先完成本轮 Jev 决策，再合批已确认路径的 Qwen 任务。"
+            notes.append("Jev 可跨未决分支推测；Qwen 须确认路径。候选仍受参数、内存及循环窗口限制，交替依赖按轮执行。")
             speculation["speculative_candidates"] = [n["id"] for n in nodes if n["reusable"]]
         return {"entry": self.plan.entry, "mode": mode, "nodes": nodes, "edges": edges, "layers": layers,
                 "parallel": parallel, "batches": batches, "loops": loops, "checks": checks,
@@ -381,7 +381,7 @@ def format_plan(plan: p.ExecutionPlan, *, mode: p.FailureMode = "eager", show_so
             lines.append(f"    [{n['task']}] {n['source']}")
             lines.extend("    inlined from " + call for call in n["calls"])
     if mode == "speculative":
-        lines.extend(("", "推测候选（参数与内存依赖就绪后，可跨控制屏障提前提交）：",
+        lines.extend(("", "两阶段推测候选（先 Jev 跨未决分支决策，再 Qwen 按已确认路径合批）：",
                       "  " + ", ".join(data["speculative_candidates"])))
     lines.extend(("", "Infer 依赖（隐藏同轮传递边；完整路径可在 HTML 中查看）："))
     for e in data["edges"]:

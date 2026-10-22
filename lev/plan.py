@@ -20,9 +20,10 @@ in-flight work, and await all active work, including checks, before success.
 Resource exhaustion is outside the static expression safety model.
 
 Speculative execution uses the same formal dependencies and serial loop rules
-as eager. A separate bounded evaluator may prepare reusable inference requests
-across unknown control gates, but never commits local effects or checks. Results
-and request-local errors are adopted only on demand with matching arguments.
+as eager. A separate bounded evaluator first speculates Decision requests across
+unknown control gates, then batches generation requests on confirmed paths.
+It never commits local effects or checks. Results and request-local errors are
+adopted only on demand with matching arguments.
 
 BoundExpr captures value bindings, not copies of their containers. State and
 inference responses are read-only; Store addresses local storage. Branch.done
