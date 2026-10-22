@@ -1,4 +1,4 @@
-"""Request-local aliases for the compact LLM batch response protocol."""
+"""Request-local names for model APIs and compact LLM batch responses."""
 
 FORMAT = "short_ids_values_v1"
 

@@ -72,9 +72,10 @@ class Lev(ABC):
     """Decision, extraction, and generation operations sharing execution context.
 
     The runtime supplies the program's system_prompt when constructing the
-    per-record instance. Implementations must apply it to every model operation,
-    including operations called from helpers, alongside the per-call task
-    instructions. It does not override API guarantees or hard constraints.
+    per-record instance. The LLM backend applies it alongside per-call task
+    instructions, including calls from helpers. Decision requests use only their
+    task instructions and requirements. Neither overrides API guarantees or hard
+    constraints.
 
     All operations accept ``examples``: a list of Example values (or their
     serialized state/answer objects). None and [] mean no examples. Examples
@@ -87,8 +88,8 @@ class Lev(ABC):
     Decision questions include their own requirements in the task instructions.
     Requirements do not replace API guarantees or hard constraints.
 
-    Generation operations accept ``field_name``: a nonblank string used as the
-    model-visible task name, including batch answer keys. None preserves automatic
+    All operations accept ``field_name``: a nonblank string used as the
+    public task name, including question and batch answer keys. None preserves automatic
     names. Names must be distinct within a physical request, including automatic
     aliases; internal call IDs and response types remain unchanged.
     """
@@ -113,6 +114,7 @@ class Lev(ABC):
         *,
         examples: list[Example] | None = None,
         requirements: list[str] | None = None,
+        field_name: str | None = None,
     ) -> NoulResponse:
         """Evaluate a yes/no question using this instance's state and model."""
         raise NotImplementedError
@@ -120,7 +122,8 @@ class Lev(ABC):
     @abstractmethod
     def choice(self, instructions: str, criteria: Dict[str, str], *,
                examples: list[Example] | None = None,
-               requirements: list[str] | None = None) -> ChoiceResponse:
+               requirements: list[str] | None = None,
+               field_name: str | None = None) -> ChoiceResponse:
         """Select an option using this instance's state and model.
 
         A successful result must have ``result.choice in criteria`` and a finite
@@ -133,7 +136,8 @@ class Lev(ABC):
     @abstractmethod
     def score(self, instructions: str, criteria: List[str], *,
               examples: list[Example] | None = None,
-              requirements: list[str] | None = None) -> ScoreResponse:
+              requirements: list[str] | None = None,
+              field_name: str | None = None) -> ScoreResponse:
         """Score the state against ordered criteria using this instance's model."""
         raise NotImplementedError
 

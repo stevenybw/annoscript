@@ -77,10 +77,10 @@ def system_prompt(
     """Declare shared model instructions and return the original program.
 
     The client exports this text as program configuration. The runtime binds it
-    to every record's injected Lev and applies it to every model operation,
-    including calls inside helper functions. Per-call instructions describe the
-    specific task; API guarantees and hard constraints remain independently
-    enforced. Mapping the shared instructions to a model is the runtime's job.
+    to every record's injected Lev and applies it to LLM operations, including
+    calls inside helper functions. Decision requests use their own instructions
+    and requirements. API guarantees and hard constraints remain independently
+    enforced. Mapping shared instructions to a model is the runtime's job.
 
     Registration neither wraps nor executes the program and creates no context.
     Direct Python calls do not inject the prompt. Each program may declare one

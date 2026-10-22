@@ -151,8 +151,9 @@ class LevClient:
 
         Include ``_get_program_config(program)`` as remote program configuration.
         The runtime supplies its ``system_prompt`` to each injected Lev and uses
-        it for all model calls, including those in helpers. Keep it separate from
-        input states and per-call instructions. The prompt text is transmitted;
+        it for LLM calls, including those in helpers. Decision requests use their
+        own instructions and requirements. Keep the prompt separate from input
+        states and per-call instructions. The prompt text is transmitted;
         the decorator declaration itself is not part of remote executable code.
 
         ``inputs`` must be a list of strings, JSON arrays, or JSON objects.

@@ -3,43 +3,62 @@
 from lev._data import thaw
 from lev.lev import NoulResponse, ChoiceResponse, ScoreResponse
 from .base import HTTPBackend, BatchResult, InferenceError, validate_response, normalize_arguments, DECISION_OPERATIONS
-from ._example_layout import EXAMPLE_CONTRACT
+from ._batch_wire import wire_name
+
+
+def _identified_calls(calls):
+    if not calls or len({c.id for c in calls}) != len(calls):
+        raise ValueError("a batch requires distinct calls")
+    identified = {}
+    for call in calls:
+        name = wire_name(call, call.id)
+        if name in identified:
+            raise ValueError(f"duplicate model-visible field name: {name!r}")
+        identified[name] = call
+    return identified
+
+
+def _question(call):
+    if call.operation not in DECISION_OPERATIONS:
+        raise ValueError("unsupported Decision operation")
+    a = normalize_arguments(call.operation, (), thaw(call.arguments))
+    instructions = a["instructions"]
+    if a.get("requirements"):
+        instructions += "\n\n要求：\n" + "\n".join(dict.fromkeys(a["requirements"]))
+    q = {"type": call.operation, "instructions": instructions}
+    if call.operation == "noul":
+        criteria = {key: a[name] for key, name in (("false", "criteria_false"), ("true", "criteria_true"))
+                    if a[name] is not None}
+    else:
+        criteria = a["criteria"]
+    for example in a.get("examples", []):
+        key = example["answer"]
+        if call.operation == "noul":
+            key = "true" if key else "false"
+            # A boolean example needs no invented description when none was given.
+            criteria.setdefault(key, {})
+        if type(criteria[key]) is str:
+            criteria[key] = {"what": criteria[key]}
+        criteria[key].setdefault("examples", []).append(example["state"])
+    if criteria:
+        q["criteria"] = criteria
+    return q
 
 
 class DecisionAPIBackend(HTTPBackend):
     supports_partial_answers = True
 
+    def _batch_payload(self, context, calls):
+        return {"model": self.model, "state": thaw(context.state),
+                "questions": {name: _question(call) for name, call in _identified_calls(calls).items()}}
+
     async def infer_batch(self, context, calls, *, allow_partial=False):
-        if not calls or len({c.id for c in calls}) != len(calls):
-            raise ValueError("a batch requires distinct calls")
-        questions = {}
-        for call in calls:
-            if call.operation not in DECISION_OPERATIONS:
-                raise ValueError("unsupported Decision operation")
-            a = normalize_arguments(call.operation, (), thaw(call.arguments))
-            instructions = a["instructions"]
-            if a.get("requirements"):
-                instructions += "\n\n要求：\n" + "\n".join(dict.fromkeys(a["requirements"]))
-            if a.get("examples"):
-                instructions = {
-                    "task_instructions": instructions,
-                    "example_policy": EXAMPLE_CONTRACT,
-                    "examples": a["examples"],
-                }
-                if context.system_prompt is not None:
-                    instructions["shared_instructions"] = context.system_prompt
-            elif context.system_prompt is not None:
-                instructions = "Shared instructions:\n" + context.system_prompt + "\n\nTask instructions:\n" + instructions
-            q = {"type": call.operation, "instructions": instructions}
-            if call.operation == "noul":
-                criteria = {key: a[name] for key, name in (("false", "criteria_false"), ("true", "criteria_true")) if a[name] is not None}
-                if criteria:
-                    q["criteria"] = criteria
-            else:
-                q["criteria"] = a["criteria"]
-            questions[call.id] = q
-        data, metadata = await self.post(self.base_url, {"model": self.model, "state": thaw(context.state), "questions": questions},
-            diagnostic_context={"calls": [{"id": c.id, "operation": c.operation, "arguments": thaw(c.arguments)} for c in calls]})
+        identified = _identified_calls(calls)
+        payload = self._batch_payload(context, calls)
+        questions = payload["questions"]
+        data, metadata = await self.post(self.base_url, payload,
+            diagnostic_context={"calls": [{"id": c.id, "operation": c.operation, "arguments": thaw(c.arguments)} for c in calls],
+                                "wire_call_ids": {name: call.id for name, call in identified.items()}})
         current_call = None
         try:
             answers = data["answers"]
@@ -47,10 +66,10 @@ class DecisionAPIBackend(HTTPBackend):
                     or not allow_partial and set(answers) != set(questions)):
                 raise ValueError()
             results, errors = {}, {}
-            for call in calls:
+            for name, call in identified.items():
                 current_call = call.id
                 try:
-                    answer = answers[call.id]
+                    answer = answers[name]
                     if answer["type"] != call.operation:
                         raise ValueError()
                     if call.operation == "noul":
@@ -62,7 +81,12 @@ class DecisionAPIBackend(HTTPBackend):
                             if type(mapping) is not dict or any(type(k) is not str or str(int(k)) != k for k in mapping):
                                 raise ValueError()
                             return {int(k): v for k, v in mapping.items()}
-                        response = ScoreResponse(indexed(answer["probabilities"]), answer["score"], indexed(answer["legend"]), answer["confidence"])
+                        legend = indexed(answer["legend"])
+                        # Jev can echo the structured levels; expose the original
+                        # string legend while still rejecting mismatched levels.
+                        if legend == dict(enumerate(questions[name]["criteria"])):
+                            legend = dict(enumerate(call.arguments["criteria"]))
+                        response = ScoreResponse(indexed(answer["probabilities"]), answer["score"], legend, answer["confidence"])
                     results[call.id] = validate_response(call, response)
                 except (KeyError, TypeError, ValueError, InferenceError):
                     if not allow_partial:

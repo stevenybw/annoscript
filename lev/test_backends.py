@@ -29,7 +29,7 @@ class BackendTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(body["state"], {"text": "中文"})
             self.assertEqual(list(body["questions"]), ["q1", "q2", "q3"])
             self.assertNotIn("criteria", body["questions"]["q1"])
-            self.assertTrue(all("共同规则" in q["instructions"] for q in body["questions"].values()))
+            self.assertEqual([q["instructions"] for q in body["questions"].values()], ["是否", "选项", "程度"])
             return httpx.Response(200, json={"answers": {
                 "q3": {"type": "score", "score": 0.7, "confidence": 0.8, "probabilities": {"0": 0.3, "1": 0.7}, "legend": {"0": "低", "1": "高"}},
                 "q1": {"type": "noul", "noul": 0.8},
