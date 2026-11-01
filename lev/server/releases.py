@@ -9,6 +9,8 @@ from urllib.parse import urlsplit
 
 from lev.job_protocol import decode, encode
 from lev._backend_profiles import validate_generation_profile, validate_extract_mode
+from lev._request_adapters import (DEFAULT_DECISION_ADAPTER, DEFAULT_GENERATION_ADAPTER,
+                                   validate_request_adapter, normalize_decision_options)
 from lev.backends.base import LLM_BATCH_DEFAULTS, validate_batch_options
 from lev.backends._generation_policy import validate_policy, validate_token_ratio
 from lev.server._plan_cache import MAX_ENTRIES, MAX_BYTES
@@ -41,14 +43,24 @@ def manifest(config):
         if name == "generation" and isinstance(model, dict) and "source_layout" in model:
             raise ValueError("source_layout was removed; extract now uses source_field")
         required = {"base_url", "model", "revision"}
-        allowed_model = required | ({"profile", "extract_mode", "batch_rule_dedup", "structured_output_revision", "request_policy", "assumed_avg_num_tokens_per_char"} if name == "generation" else set())
+        allowed_model = required | {"request_adapter"} | ({"profile", "extract_mode", "batch_rule_dedup", "structured_output_revision", "request_policy", "assumed_avg_num_tokens_per_char"} if name == "generation" else {"request_adapter_options"})
         if (type(model) is not dict or not required <= set(model) or set(model) - allowed_model
-                or any(type(v) is not str or not v.strip() for k, v in model.items() if k not in ("request_policy", "assumed_avg_num_tokens_per_char", "batch_rule_dedup"))):
+                or any(type(v) is not str or not v.strip() for k, v in model.items() if k not in ("request_policy", "assumed_avg_num_tokens_per_char", "batch_rule_dedup", "request_adapter_options"))):
             raise ValueError(f"{name} needs base_url, model and immutable deployment revision")
         url = urlsplit(model["base_url"])
         if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
             raise ValueError("model URL must be HTTP(S), without credentials, query or fragment")
         models[name] = model.copy()
+        models[name]["request_adapter"] = validate_request_adapter(
+            model.get("request_adapter", DEFAULT_DECISION_ADAPTER if name == "decision" else DEFAULT_GENERATION_ADAPTER), name)
+        if name == "decision":
+            if "request_adapter_options" in model and type(model["request_adapter_options"]) is not dict:
+                raise ValueError("request_adapter_options must be an object")
+            options = normalize_decision_options(models[name]["request_adapter"], model.get("request_adapter_options"))
+            if options is not None:
+                models[name]["request_adapter_options"] = options
+            else:
+                models[name].pop("request_adapter_options", None)
         if name == "generation":
             models[name]["assumed_avg_num_tokens_per_char"] = validate_token_ratio(model.get("assumed_avg_num_tokens_per_char", 2))
             models[name]["profile"] = validate_generation_profile(model.get("profile", "legacy"))

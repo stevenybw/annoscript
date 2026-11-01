@@ -23,6 +23,7 @@ from lev.runtime import LevRuntime, RunInput
 def backends(manifest):
     from lev.backends.decision import DecisionAPIBackend
     from lev.backends.llm import LLMAPIBackend
+    from lev._request_adapters import DEFAULT_DECISION_ADAPTER, DEFAULT_GENERATION_ADAPTER
     try:
         decision_token = os.environ["LEV_DECISION_AUTH_TOKEN"]
         generation_token = os.environ["LEV_GENERATE_AUTH_TOKEN"]
@@ -30,8 +31,11 @@ def backends(manifest):
         raise BackendFatalError("model credentials are unavailable", code="configuration_failed") from None
     timeout = manifest["policy"]["model_timeout"]
     d, g = manifest["decision"], manifest["generation"]
-    return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout),
+    return (DecisionAPIBackend(d["base_url"], decision_token, d["model"], timeout=timeout,
+                               request_adapter=d.get("request_adapter", DEFAULT_DECISION_ADAPTER),
+                               request_adapter_options=d.get("request_adapter_options")),
             LLMAPIBackend(g["base_url"], generation_token, g["model"], timeout=timeout,
+                          request_adapter=g.get("request_adapter", DEFAULT_GENERATION_ADAPTER),
                           profile=g["profile"], extract_mode=g.get("extract_mode", "validated"),
                           batch_rule_dedup=g.get("batch_rule_dedup", False),
                           disable_thinking=manifest["disable_thinking"], request_policy=g.get("request_policy"),
@@ -55,6 +59,14 @@ class ObservedBackend:
     @property
     def supports_llm_batch(self):
         return getattr(self.backend, "supports_llm_batch", False) is True
+
+    @property
+    def supports_decision_batch_planning(self):
+        return getattr(self.backend, "supports_decision_batch_planning", False) is True
+
+    @property
+    def supports_partial_answers(self):
+        return getattr(self.backend, "supports_partial_answers", False) is True
 
     def plan_batch(self, *args, **kwargs):
         return self.backend.plan_batch(*args, **kwargs)

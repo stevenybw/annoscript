@@ -12,7 +12,9 @@ from .base import (HTTPBackend, InferenceOutput, InferenceError, validate_respon
 from ._generation_policy import validate_policy, PinnedTokenCounter, effective_budget, validate_token_ratio
 from ._bounded_grammar import grammar as bounded_grammar, ensure_satisfiable
 from ._shared_rules import factor_rules, validate_rule_dedup
-from ._prompt import messages
+from lev._request_adapters import DEFAULT_GENERATION_ADAPTER
+from .adapters import generation_adapter
+from ._preview import request_preview
 from ._batch_wire import FORMAT, batch_calls, wire_name
 
 
@@ -29,10 +31,12 @@ class LLMAPIBackend(HTTPBackend):
     supports_llm_batch = True
     supports_prepared_batch = True
 
-    def __init__(self, *args, profile="legacy", extract_mode="validated", disable_thinking=True,
+    def __init__(self, *args, profile="legacy", request_adapter=DEFAULT_GENERATION_ADAPTER, extract_mode="validated", disable_thinking=True,
                  request_policy=None, assumed_avg_num_tokens_per_char=2, batch_rule_dedup=False, _token_counter=None, **kwargs):
         if "source_layout" in kwargs:
             raise TypeError("source_layout was removed; extract now uses source_field")
+        self._request_adapter = generation_adapter(request_adapter)
+        self.request_adapter = request_adapter
         self.profile = validate_generation_profile(profile)
         self.batch_rule_dedup = validate_rule_dedup(batch_rule_dedup, self.profile)
         self.extract_mode = validate_extract_mode(extract_mode, self.profile)
@@ -76,6 +80,7 @@ class LLMAPIBackend(HTTPBackend):
                  "calls": [{"id": c.id, "operation": c.operation, "arguments": thaw(c.arguments),
                             "extraction_source": c.extraction_source} for c in calls],
                  "model": self.model, "base_url": self.base_url, "profile": self.profile,
+                 "request_adapter": self.request_adapter,
                  "extract_mode": self.extract_mode, "source_layout": "source_field_v1",
                  "batch_rule_dedup": self.batch_rule_dedup,
                  "batch_response_format": FORMAT,
@@ -90,7 +95,7 @@ class LLMAPIBackend(HTTPBackend):
         self.preparation_stats["payload_builds"] += 1
         payload = (self._batch_payload(context, calls, max_tokens) if batch else
                    self._single_payload(context, calls[0], max_tokens, repair_feedback))
-        evidence = {**self._context_evidence(payload), **self._sources_evidence(context, calls)}
+        evidence = {"request_adapter": self.request_adapter, **self._context_evidence(payload), **self._sources_evidence(context, calls)}
         if batch:
             evidence.update(batch_response_format=FORMAT,
                             wire_call_ids={key: call.id for key, call in batch_calls(calls).items()})
@@ -128,7 +133,7 @@ class LLMAPIBackend(HTTPBackend):
                 "tokenizer_revision": self.request_policy["tokenizer"]["revision"],
                 "grammar_sha256": hashlib.sha256(payload["structured_outputs"]["grammar"].encode()).hexdigest()}
 
-    async def _preflight(self, payload, calls, *, repair=False, prepared=None):
+    def _check_context(self, payload, calls, *, repair=False, prepared=None):
         evidence = thaw(prepared.evidence) if prepared is not None else self._context_evidence(payload)
         if "input_tokens" in evidence and evidence["input_tokens"] + evidence["output_budget"] > evidence["context_window"]:
             self._diagnose({"event": "local_rejection", "code": "context_length_exceeded",
@@ -138,7 +143,13 @@ class LLMAPIBackend(HTTPBackend):
                                  code="context_length_exceeded", metadata={"dispatch_status": "not_sent", **evidence})
         return evidence
 
+    async def _preflight(self, payload, calls, *, repair=False, prepared=None):
+        return self._check_context(payload, calls, repair=repair, prepared=prepared)
+
     async def _check_constraints(self, calls, *, repair=False):
+        self._validate_constraints(calls, repair=repair)
+
+    def _validate_constraints(self, calls, *, repair=False):
         for call in calls:
             effective_budget(call, self.assumed_avg_num_tokens_per_char)
             try:
@@ -149,21 +160,32 @@ class LLMAPIBackend(HTTPBackend):
                 raise
 
     def _single_payload(self, context, call, max_tokens, repair_feedback=None):
-        payload = {"model": self.model,
-                   "messages": messages(context, [call], repair_feedback=repair_feedback)}
-        if self.disable_thinking:
-            if self.profile == "qwen_vllm":
-                payload["chat_template_kwargs"] = {"enable_thinking": False}
-            else:
-                payload["thinking"] = {"type": "disabled"}
-        payload["max_tokens"] = max_tokens
-        if self.profile == "qwen_vllm":
-            payload["structured_outputs"] = {"grammar": self._grammar([call])}
-        elif call.operation != "generate":
-            payload["response_format"] = {"type": "json_object"}
-        if self.request_policy is not None:
-            payload.update(self.request_policy["sampling"])
-        return payload
+        return self._request_adapter.single_payload(
+            context, call, model=self.model, profile=self.profile, disable_thinking=self.disable_thinking,
+            max_tokens=max_tokens, grammar=self._grammar, repair_feedback=repair_feedback,
+            sampling=self.request_policy["sampling"] if self.request_policy is not None else None)
+
+    def preview(self, context, call, *, repair_feedback=None, max_tokens_override=None):
+        """Preview one resolved call, with the same constraints and preflight as infer."""
+        if call.operation not in LLM_OPERATIONS:
+            raise ValueError("unsupported LLM operation")
+        self._validate_constraints([call], repair=repair_feedback is not None)
+        budget = effective_budget(call, self.assumed_avg_num_tokens_per_char, max_tokens_override)
+        return self._preview(context, [call], budget, repair_feedback=repair_feedback)
+
+    def preview_batch(self, context, calls, *, max_tokens):
+        """Preview an already selected batch; does not speculate or choose a path."""
+        batch_calls(calls)
+        self._validate_constraints(calls)
+        return self._preview(context, calls, max_tokens, batch=True)
+
+    def _preview(self, context, calls, max_tokens, *, batch=False, repair_feedback=None):
+        prepared = self._prepare(context, calls, max_tokens, batch=batch, repair_feedback=repair_feedback)
+        payload = thaw(prepared.payload)
+        evidence = self._check_context(payload, calls, repair=repair_feedback is not None, prepared=prepared)
+        evidence.pop("preparation", None)
+        return request_preview(payload, stage="generation", adapter=self.request_adapter,
+                               url=self.base_url + "/chat/completions", evidence=evidence)
 
     async def infer(self, context, call, *, repair_feedback=None, max_tokens_override=None):
         if call.operation not in LLM_OPERATIONS:
@@ -223,19 +245,10 @@ class LLMAPIBackend(HTTPBackend):
             if call.operation not in LLM_OPERATIONS:
                 raise ValueError("unsupported LLM operation")
             effective_budget(call, self.assumed_avg_num_tokens_per_char)
-        payload = {"model": self.model, "max_tokens": max_tokens,
-                   "messages": messages(context, calls, batch=True, rule_dedup=self.batch_rule_dedup)}
-        if self.profile == "qwen_vllm":
-            payload["structured_outputs"] = {"grammar": self._grammar(calls, batch=True)}
-            if self.disable_thinking:
-                payload["chat_template_kwargs"] = {"enable_thinking": False}
-        else:
-            payload["response_format"] = {"type": "json_object"}
-            if self.disable_thinking:
-                payload["thinking"] = {"type": "disabled"}
-        if self.request_policy is not None:
-            payload.update(self.request_policy["sampling"])
-        return payload
+        return self._request_adapter.batch_payload(
+            context, calls, model=self.model, profile=self.profile, disable_thinking=self.disable_thinking,
+            max_tokens=max_tokens, grammar=self._grammar, rule_dedup=self.batch_rule_dedup,
+            sampling=self.request_policy["sampling"] if self.request_policy is not None else None)
 
     def plan_batch(self, context, calls, *, max_calls, max_input_bytes, max_output_tokens, default_tokens):
         """Choose a bounded prefix without network work; None means use single inference."""

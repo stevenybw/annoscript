@@ -563,7 +563,9 @@ class LevRuntime:
         backend = self.decision_backend if kind == "decision" else self.llm_backend
         details = {}
         if batch_plan is not None:
-            details = {"input_bytes": batch_plan.input_bytes, "max_tokens": batch_plan.max_tokens}
+            details = {"input_bytes": batch_plan.input_bytes}
+            if kind == "llm":
+                details["max_tokens"] = batch_plan.max_tokens
         if requests[0].repair_attempt:
             details.update(repair_attempt=requests[0].repair_attempt, repair_parent=requests[0].repair_parent)
         self._record("http_submitted", run, batch=batch_id, backend=kind, model=getattr(backend, "model", None),
@@ -573,6 +575,8 @@ class LevRuntime:
         if kind == "decision":
             options = {"allow_partial": True} if (run.speculation is not None and
                        getattr(backend, "supports_partial_answers", False) is True) else {}
+            if batch_plan is not None and getattr(backend, "supports_prepared_batch", False) is True:
+                options["prepared"] = batch_plan.prepared
             coroutine = backend.infer_batch(run.context, calls, **options)
         elif batch_plan is not None:
             prepared = ({"prepared": batch_plan.prepared} if
@@ -743,6 +747,21 @@ class LevRuntime:
                         plan = None
                         if kind == "decision":
                             selected = eligible[:self.max_batch_questions]
+                            if getattr(self.decision_backend, "supports_decision_batch_planning", False) is True:
+                                try:
+                                    plan = self.decision_backend.plan_batch(run.context, [r.call for r in eligible],
+                                                                            max_calls=self.max_batch_questions)
+                                    if plan is None:
+                                        selected = eligible[:1]
+                                    else:
+                                        selected = eligible[:len(plan.calls)]
+                                        if (not selected or len(selected) > self.max_batch_questions
+                                                or tuple(r.call for r in selected) != plan.calls):
+                                            raise ValueError("backend selected an invalid Decision batch prefix")
+                                except BaseException:
+                                    if release is not None:
+                                        release()
+                                    raise
                         else:
                             repairs = [r for r in eligible if r.repair_attempt]
                             if not repairs and any(r.status == "queued" and r.repair_attempt

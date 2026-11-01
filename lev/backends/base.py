@@ -87,6 +87,21 @@ class PreparedLLMRequest:
 
 
 @dataclass(frozen=True)
+class PreparedDecisionRequest:
+    binding: str
+    payload: object
+    body: bytes
+    evidence: object
+
+
+@dataclass(frozen=True)
+class DecisionBatchPlan:
+    calls: tuple
+    input_bytes: int | None
+    prepared: PreparedDecisionRequest | None = field(default=None, repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class LLMBatchPlan:
     calls: tuple
     max_tokens: int

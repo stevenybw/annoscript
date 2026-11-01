@@ -63,7 +63,9 @@ class LevClient:
 
     @classmethod
     def from_env(cls, *, env_file=None, mode="eager", disable_thinking=True,
-                 generation_profile=None, batch_rule_dedup=False, assumed_avg_num_tokens_per_char=2,
+                 generation_profile=None, decision_request_adapter=None, generation_request_adapter=None,
+                 decision_request_adapter_options=None,
+                 batch_rule_dedup=False, assumed_avg_num_tokens_per_char=2,
                  timeout=60.0, **runtime_options):
         if "source_layout" in runtime_options:
             raise TypeError("source_layout was removed; extract now uses source_field")
@@ -71,6 +73,9 @@ class LevClient:
         from lev.runtime import LevRuntime
         decision, llm = backends_from_env(env_file=env_file, disable_thinking=disable_thinking,
                                          generation_profile=generation_profile, batch_rule_dedup=batch_rule_dedup, timeout=timeout,
+                                         decision_request_adapter=decision_request_adapter,
+                                         decision_request_adapter_options=decision_request_adapter_options,
+                                         generation_request_adapter=generation_request_adapter,
                                          assumed_avg_num_tokens_per_char=assumed_avg_num_tokens_per_char)
         return cls(LevRuntime(decision, llm, **runtime_options), mode=mode)
 
