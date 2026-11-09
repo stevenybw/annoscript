@@ -3,3 +3,8 @@ __pycache__/
 *.py[cod]
 .venv/
 lev-live-report*.json
+.env
+.env.*
+*.pem
+*.key
+credential.sh

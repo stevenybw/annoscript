@@ -1,0 +1,4741 @@
+{
+  "format": "lev-request-adapter-baseline",
+  "version": 1,
+  "source_head": "synthetic-request-adapter-v1",
+  "model": "frozen-model",
+  "cases": [
+    {
+      "stage": "decision",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则只用于生成",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "选择类别",
+            "criteria": {
+              "a": "类别甲",
+              "b": "类别乙"
+            },
+            "field_name": "category",
+            "requirements": [
+              "规则",
+              "规则"
+            ],
+            "examples": [
+              {
+                "state": {
+                  "text": "示例甲"
+                },
+                "answer": "a"
+              },
+              {
+                "state": "示例乙",
+                "answer": "b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "noul",
+          "kwargs": {
+            "instructions": "是否事件",
+            "field_name": "is_event",
+            "examples": [
+              {
+                "state": "发生了",
+                "answer": true
+              },
+              {
+                "state": [],
+                "answer": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "score",
+          "kwargs": {
+            "instructions": "程度",
+            "criteria": [
+              "低",
+              "高"
+            ],
+            "field_name": "severity",
+            "examples": [
+              {
+                "state": "高程度",
+                "answer": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "空示例",
+            "criteria": {
+              "x": "甲",
+              "y": "乙"
+            }
+          }
+        }
+      ],
+      "options": {},
+      "mode": "batch",
+      "expected_sha256": "8fb507350e54aaf0b2ead709ab47af923ebb8fa19b28bbc5fbf53c3b270f02fc",
+      "expected_bytes": 596
+    },
+    {
+      "stage": "decision",
+      "state": {
+        "text": "正文北京",
+        "candidates": [
+          "甲",
+          "乙"
+        ],
+        "meta": [
+          1,
+          true
+        ]
+      },
+      "system_prompt": "共享规则只用于生成",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "选择类别",
+            "criteria": {
+              "a": "类别甲",
+              "b": "类别乙"
+            },
+            "field_name": "category",
+            "requirements": [
+              "规则",
+              "规则"
+            ],
+            "examples": [
+              {
+                "state": {
+                  "text": "示例甲"
+                },
+                "answer": "a"
+              },
+              {
+                "state": "示例乙",
+                "answer": "b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "noul",
+          "kwargs": {
+            "instructions": "是否事件",
+            "field_name": "is_event",
+            "examples": [
+              {
+                "state": "发生了",
+                "answer": true
+              },
+              {
+                "state": [],
+                "answer": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "score",
+          "kwargs": {
+            "instructions": "程度",
+            "criteria": [
+              "低",
+              "高"
+            ],
+            "field_name": "severity",
+            "examples": [
+              {
+                "state": "高程度",
+                "answer": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "空示例",
+            "criteria": {
+              "x": "甲",
+              "y": "乙"
+            }
+          }
+        }
+      ],
+      "options": {},
+      "mode": "batch",
+      "expected_sha256": "7275b65244c1fd4d2ce9b9714f62d78c0d32c34118b47e2589056f6f7b14c3ad",
+      "expected_bytes": 638
+    },
+    {
+      "stage": "decision",
+      "state": [
+        "正文北京",
+        {
+          "x": "输入数据"
+        }
+      ],
+      "system_prompt": "共享规则只用于生成",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "选择类别",
+            "criteria": {
+              "a": "类别甲",
+              "b": "类别乙"
+            },
+            "field_name": "category",
+            "requirements": [
+              "规则",
+              "规则"
+            ],
+            "examples": [
+              {
+                "state": {
+                  "text": "示例甲"
+                },
+                "answer": "a"
+              },
+              {
+                "state": "示例乙",
+                "answer": "b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "noul",
+          "kwargs": {
+            "instructions": "是否事件",
+            "field_name": "is_event",
+            "examples": [
+              {
+                "state": "发生了",
+                "answer": true
+              },
+              {
+                "state": [],
+                "answer": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "score",
+          "kwargs": {
+            "instructions": "程度",
+            "criteria": [
+              "低",
+              "高"
+            ],
+            "field_name": "severity",
+            "examples": [
+              {
+                "state": "高程度",
+                "answer": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "choice",
+          "kwargs": {
+            "instructions": "空示例",
+            "criteria": {
+              "x": "甲",
+              "y": "乙"
+            }
+          }
+        }
+      ],
+      "options": {},
+      "mode": "batch",
+      "expected_sha256": "e5f090474ff10a043f7eb8ed9170151e97d614bd9a7acb0739add9d787521c76",
+      "expected_bytes": 609
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "d18add4539f1546966f42d90bf372e761f1cca69232c200b4446fcd61a596055",
+      "expected_bytes": 999
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "135f32db344eddebcca29902480bb1c8c41fe019790c2899d9825ebb791dcb78",
+      "expected_bytes": 1108
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "8f0190b369766fad2a6270f32ae08799a6f135ab229bd9e7c81376979e32c97c",
+      "expected_bytes": 1026
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "13a514703465c8b8558ec84d5c202fd158fba18653131230a5cc01405eb5c35e",
+      "expected_bytes": 1135
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "85b5c13ba91c8524d4679dbfcb4c0826c1da4fd8962c6e85bad82eb29ad8ec55",
+      "expected_bytes": 743
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "1258985e19d9344e9735b3abe9f484fd684024ab779e70fe069e525404514b59",
+      "expected_bytes": 852
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "32d9111d760d801468fd5f275fefa60c7d8d5af45efce83b6ed2be11732862e6",
+      "expected_bytes": 1071
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "e57e7ff4945dbdb8db1a924347f1ce75ced6b1e9e9424a2a8b91444977d5c30b",
+      "expected_bytes": 1180
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "698e3acc0f66e8a727dfdafe1694e3abf1057e86866763d688b18c6a810acce9",
+      "expected_bytes": 2046
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "4288cc5e5db53ffdc262894363c362c38f45a18f3276ad7d125345122f2e3822",
+      "expected_bytes": 968
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "b9ca18df33d221ccdac8f0e1920a7c62c6d1ebe4249a28c39051de15aa290514",
+      "expected_bytes": 1077
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "a9b30ae99d4e37c106d6181125c1ec197c0c43cb3aee6fff9b938bc469444d4c",
+      "expected_bytes": 995
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "c08e646e339548b537c62d0a66a872308d6bca33ed7e5a60fd314ad4e61f7d07",
+      "expected_bytes": 1104
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "38cd8b7588a1f0eeb6d5a1c8d688fe3384c063a6e958985cf7e643d6b28ca58a",
+      "expected_bytes": 712
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "57b3b4ceaa270e4236142585e64d89d6528413a22bbf7aa62f0eb241d12fe3a2",
+      "expected_bytes": 821
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "1227b9e992bff00baa35bca7a4bcd4e52ecd0bc27365b9ba0424bcb48303a820",
+      "expected_bytes": 1040
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "1acd6b197be5c0baf4f2bd00a63a7447b2ec70e9dcec1696efdb4f4595f9dd1a",
+      "expected_bytes": 1149
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "22afe488ad3fc450235fa98fc53a92cbc448e1ff72672e2ebf928c41a15445c9",
+      "expected_bytes": 2015
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "eb40f8a206901ade73ab990f46e4184cb20ccc87f303ef04477af094edb8cd9d",
+      "expected_bytes": 1088
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "8ded3894b113f5eb87bbe6299d8a6c2c6d7b5f75f96ecaa481ec5471421facf9",
+      "expected_bytes": 1197
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "a2577c3ece9ae6159f4df61f39195a3c79bd58922e6ffcb458bd67521631699e",
+      "expected_bytes": 1356
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "2c990321ef3778cdf5f7004efee34a0aafa6739bb392b9574fab4046a46cd917",
+      "expected_bytes": 1465
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "cabc889157375c68cfa5573224bb6e73b4306cb3acda53c3373d3554303b51a7",
+      "expected_bytes": 1123
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "0e6beae2489f3a6c3465a12bc0002dd906425a5fa817105ba6b108f044a147ee",
+      "expected_bytes": 1232
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "25f959d8a4cff761fac483d45e1f497fd409e701f1c5587178cd283a0405da11",
+      "expected_bytes": 1451
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "bc1437de514f4726655817e7b2c8841e85a037e3a41c477c8d19b1616202637e",
+      "expected_bytes": 1560
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "93aa839dc91b2af2b736033524e86be447ea8d554ba06ee5151860d2631c9b47",
+      "expected_bytes": 3356
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "93aa839dc91b2af2b736033524e86be447ea8d554ba06ee5151860d2631c9b47",
+      "expected_bytes": 3356
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "be27b681c3925da265c556da364f8785a828c0c15fbf56748863ca5662069ab9",
+      "expected_bytes": 1039
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "02b1c7e261e6bf290f0e1378fc81fa1bc0dfc14d70574abcf8e9dc5cf683d859",
+      "expected_bytes": 1148
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "bb2829ba1455b64c57f0cad0b517b222ffaf51938ec2ba2e707f5fbb46572abc",
+      "expected_bytes": 1307
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "a9e0763e162b173b57e6de3e42d1dfd31e9bc0da72c3b8bac30202937b4d92a7",
+      "expected_bytes": 1416
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "fd503fb1989771e5762278c21042a19a184c2d5a0ccdb1438934730f7e8da88e",
+      "expected_bytes": 1074
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "e37cd18542dca3531dc2f60e7d5b496ecdd415cf083f20e988abf03b73452dea",
+      "expected_bytes": 1183
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "69c7c007e0ddf0bd4ad7dd2631896e1d334abb093805a1b68065b8e33428399c",
+      "expected_bytes": 1402
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "7b0e0ce483843d84a7d21deb7fb91fe69c75695b1fc443e06e01439787afa801",
+      "expected_bytes": 1511
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "cbc8fc043ca4a702e57643362535bd65a93a231c1f09e2d4efac27756b3845e3",
+      "expected_bytes": 3307
+    },
+    {
+      "stage": "generation",
+      "state": "正文\"\\\n😀北京",
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": null,
+            "examples": [
+              {
+                "state": "示例北京",
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "cbc8fc043ca4a702e57643362535bd65a93a231c1f09e2d4efac27756b3845e3",
+      "expected_bytes": 3307
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "29fd7298f16032a69aba906f6d0837c8192d953928fee16e82a9d18b2c596f72",
+      "expected_bytes": 1026
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "d2fba84466ac930884e5078e26ef1ae0149bb0f95225e477bee19ca5383ec3d2",
+      "expected_bytes": 1135
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "0cbe320fe32bf6b2af52924c07ec56004a88ec1241900f8e0d450b0abc50c034",
+      "expected_bytes": 1053
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "70c6d04a43253d7d4a990486395783bac20cc76e9400dde7d4ed425a8d24c3ba",
+      "expected_bytes": 1162
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "813cf2df84383fc73a0ab55f7b686741561d1ef3c3dcd005234e9693836f2499",
+      "expected_bytes": 770
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "c1802580ecca5e42936134173287508cef764cc61697ad0273fe4c6478a8ca76",
+      "expected_bytes": 879
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "191b0181376e5f6343a057d732924bdee9be091ce2fe00023d561fe535dcaa82",
+      "expected_bytes": 1124
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "1975ff1a555e7199d26a0241b50e7e10d568d11c8722cd0cb45b841a665808b0",
+      "expected_bytes": 1233
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "6add49fc9740609bd4263b4093f5f5778e57323f3d499eeda073bf266e974383",
+      "expected_bytes": 2099
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "8323f874e9597badd8cc3399be8d02c92fb6b731ed853e91dd59e74709ce0e60",
+      "expected_bytes": 995
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "5e89b751477f64a1b4419100e0a2534c9743d9f51629c6ee576a7b3a9c0d059d",
+      "expected_bytes": 1104
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "303faae36b2671df2733155082be949600446fbff86d784c55a2536a84e89de9",
+      "expected_bytes": 1022
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "df752a0f44a139cd8757f863b2d82c00f84759fbe61d154f4bc0128a3d5bc323",
+      "expected_bytes": 1131
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "a5fe1903ba73108f1e3fb77805ae3e6ea86d9652ae40ef098053e780cf366ef9",
+      "expected_bytes": 739
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "2a7ba5d5934ffd6b17672d0f4217ec05d7080155e2c395b969866e0c60e7eddb",
+      "expected_bytes": 848
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "2268fed36669f0948102cdfa4e9fb542c0c75084e8b659aebd23902f8998ae1d",
+      "expected_bytes": 1093
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "b7a7e893757e98a1b233bfabb07cb5f8443e7eb9eb3bcbc06103df3bd6b6f4fa",
+      "expected_bytes": 1202
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "acacaffe62a6d6b5282e61441f124633ef94c98056eee3d851bb53889e7e5419",
+      "expected_bytes": 2068
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "55ae487ffdaaf049e39e5ade08f499926ce8320a3fff8538ff07789b443ce5f9",
+      "expected_bytes": 1115
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "f1d94f956ce9377b3846e7b90dbd45ecd4ea3208031b0dfa5e1cd2f6d25917b4",
+      "expected_bytes": 1224
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "b844bd7d03dd6410105a9ae20578b0542fb05d41d09cdca665c1496bd6eb5e22",
+      "expected_bytes": 1383
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "097f53d9bccf5733fa3a89f5845a5f6cb9abadb82bf959191921760cd7d3f444",
+      "expected_bytes": 1492
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "1ac721df3256989575ad7d1ba4dc4599648e07bc4eb63d2c0ad844632763dbc0",
+      "expected_bytes": 1150
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "b2db6454eeeeaf15ce55f9282350125803488f4ec52194d4dfb134dd4fb31ce6",
+      "expected_bytes": 1259
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "815fa20c7d31e00e829f47a7b098abaabe95ded5cb1b9d8f9fb82a1dc2b4e0f9",
+      "expected_bytes": 1504
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "692a18066c232059f227e54d4a0d712ed8ae2d604b833e6f0ab6f82d40d96314",
+      "expected_bytes": 1613
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "cf116eac08f77047651d2e60028491b0b54e27a80e522ef2180202823f0cf25c",
+      "expected_bytes": 3409
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "cf116eac08f77047651d2e60028491b0b54e27a80e522ef2180202823f0cf25c",
+      "expected_bytes": 3409
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "947bdd16984533711705f7dd9d15609025a9fcf29efcd9faa32d2866eefbc2cd",
+      "expected_bytes": 1066
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "ce990393774fcee5068bb06670e9f9a51e4dbf5791c9f41217019234659361fe",
+      "expected_bytes": 1175
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "252445a122104bd0cf41d0136828c47b9134653d85250b1e9f0c19d2781b9d75",
+      "expected_bytes": 1334
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "5c0fbfe4815beaecea232bcc683864f246274ec2a7de89b14720c65dcb390a5a",
+      "expected_bytes": 1443
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "5627c384d4602690a4cf0495f7c70ea8be2c553875b4c219cce4bacfee764696",
+      "expected_bytes": 1101
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "1d1272333914c9a4d3302124b65e8d0ec37ee859d4a0c8c5c0f3cd568a153da1",
+      "expected_bytes": 1210
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "6c48ecedf54b08d400422dae1e444dfcd68cd15758a24f8622836fc40cfd052b",
+      "expected_bytes": 1455
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "85c82ba14f697aac6988a3a90cc2bd644e00feca884b3075ba5e156f25374c56",
+      "expected_bytes": 1564
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "7cb5b153b213af68a37a22284ddf82a98e23bb4af13341376d405a715c1a6509",
+      "expected_bytes": 3360
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "正文北京",
+        "meta": [
+          "保留"
+        ]
+      },
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "source_field": "text",
+            "examples": [
+              {
+                "state": {
+                  "text": "示例北京"
+                },
+                "answer": [
+                  "北京"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "7cb5b153b213af68a37a22284ddf82a98e23bb4af13341376d405a715c1a6509",
+      "expected_bytes": 3360
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "e6dd20d04d8d703aa6f82c4654cd9d99e3b15bec5ff129e2364f98a3403d1d6b",
+      "expected_bytes": 995
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "4f8772d40e027c9948510156119a86745901cedc6ec30a84c000f934cd5d48e3",
+      "expected_bytes": 1104
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "118c26b43a34c27aa69cccbb1aaba4daf9bda718933c3fd2364f1bf8e320c1d2",
+      "expected_bytes": 1022
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "164ec3847be1131dbe55fb0425e86a396105c0d8d3a986e24d474530bc08c59d",
+      "expected_bytes": 1131
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "d6748da29bb460bfc9f9bc18407b4e61eab1e7df97476eede627d18d6b6de8e5",
+      "expected_bytes": 739
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "c0f91685727e2ef105bba5ed8f95fdfd3f73e6df51cad60df103790caf4920a7",
+      "expected_bytes": 848
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "c98e61bf89a67264c6808de1477b41de67993c461bbdcc04cbdb54ae73833a22",
+      "expected_bytes": 1773
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "6ffa920aad1050e65741d7f1c06c6d214ff274353ab47b2eb8597cdfac1cad92",
+      "expected_bytes": 964
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "2b3bc29378900385f62b6d58eff3f01cfd1a0cc8482c37171263664baa9babd1",
+      "expected_bytes": 1073
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "9504ebe7d88c216dcb00ca0342f539f8a35c66e367e8615a2972ea9ffca4ed0e",
+      "expected_bytes": 991
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "057464174aeb12bba8dc75bbb304d076919457fa67b0f696435a7212a0f5c181",
+      "expected_bytes": 1100
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "a0e19b83b29b2a2e3fbd66bd1591af4ea3efe77282b538af08a937dc7541ffbe",
+      "expected_bytes": 708
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "5e6bbe59036e5c8e0c49bdd096e3035bef4019a90c2db78087df158d036531a1",
+      "expected_bytes": 817
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "legacy",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "7f73e6d7579f22eeb0ae8a0da4bcd5a54051e6a550e04bf99c041a532ee7de51",
+      "expected_bytes": 1742
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "3c476d9bc0c933c5ec1dc4102d9037cea6b7786763781bfafbe0c8fc2aac5d9e",
+      "expected_bytes": 1084
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "c817e44c86157dd7929414cdf31979543a39b96bae8e2f620f0b845e6580ec3c",
+      "expected_bytes": 1193
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "ab8b84788e9ae7bb3f4fa9d5d7ab4d9a5e0630a8b010dfcc55659ccdfc8a259b",
+      "expected_bytes": 1352
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "5a0bac0242819ab67a4d17445acef578e371eae9644505b451e07113cf44f3ba",
+      "expected_bytes": 1461
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "cc24f4dad64b0a74cd03890f3e9c897175f3d7be712eea4c8c84ecb11ae3cc14",
+      "expected_bytes": 1119
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "ed51fa8e19fcb8f8e3d1167d2bc6b0364d612b83a4dcc1931844616c6585d882",
+      "expected_bytes": 1228
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "ac5083a5245ff3d96f7d4aa48ecf4242ae9d86ab52d6cf10f5d9185b4ddc7929",
+      "expected_bytes": 2733
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": true,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "ac5083a5245ff3d96f7d4aa48ecf4242ae9d86ab52d6cf10f5d9185b4ddc7929",
+      "expected_bytes": 2733
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "c0be85bd05664f0038d43e2066a09e9869b9809a8266e9d8cd14633f775bcaf3",
+      "expected_bytes": 1035
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "b3ce1f56c498339d778537733130f09a97f95c5cdd5cd0ee9ecf39e5b79f8a85",
+      "expected_bytes": 1144
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "55a80b792b3b9eda486f9760d1df1bf23e764b2907f41a5343c1ed29b699150d",
+      "expected_bytes": 1303
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "396e6ce73177a5bf6a326af50c79617321ed0f1f9900202dbc6eabd4291851f0",
+      "expected_bytes": 1412
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": null,
+      "expected_sha256": "883abd8227b76cd15f9e72e2e7c0e5b0497d88e3f41008d48c3f1ff2326de7c1",
+      "expected_bytes": 1070
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "single",
+      "max_tokens": 96,
+      "repair_feedback": "格式错误，请重答",
+      "expected_sha256": "abd5ec22a9162f0a633616bdd69dd7283e9e36079609112a2c0a403201fa875f",
+      "expected_bytes": 1179
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "7c76565c4a88c331647416d25d888841125e04340579cff44117ead264909e69",
+      "expected_bytes": 2684
+    },
+    {
+      "stage": "generation",
+      "state": [
+        "正文北京"
+      ],
+      "system_prompt": "共享规则",
+      "calls": [
+        {
+          "id": "a",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题。",
+            "max_length": 24,
+            "field_name": "title",
+            "requirements": [
+              "共用规则"
+            ],
+            "examples": [
+              {
+                "state": "示例",
+                "answer": "标题"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "可空标签。",
+            "max_length": 8,
+            "nullable": true,
+            "examples": [
+              {
+                "state": "示例",
+                "answer": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "operation": "generate_list",
+          "kwargs": {
+            "instructions": "维度。",
+            "max_items": 2,
+            "max_length_per_item": 8,
+            "requirements": [
+              "共用规则"
+            ]
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "disable_thinking": false,
+        "batch_rule_dedup": true
+      },
+      "mode": "batch",
+      "max_tokens": 640,
+      "expected_sha256": "7c76565c4a88c331647416d25d888841125e04340579cff44117ead264909e69",
+      "expected_bytes": 2684
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "北京广州"
+      },
+      "calls": [
+        {
+          "id": "x",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点",
+            "max_items": 2,
+            "max_length_per_item": 4,
+            "source_field": "text"
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "extract_mode": "substring_chars",
+        "request_policy": {
+          "sampling": {
+            "temperature": 0,
+            "top_p": 1,
+            "top_k": -1,
+            "min_p": 0,
+            "repetition_penalty": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "default_max_tokens": 128,
+          "context_window": 8192,
+          "bounded_outputs": true,
+          "tokenizer": {
+            "revision": "fixture",
+            "files": {
+              "tokenizer.json": "0000000000000000000000000000000000000000000000000000000000000000",
+              "tokenizer_config.json": "0000000000000000000000000000000000000000000000000000000000000000",
+              "chat_template.jinja": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        }
+      },
+      "mode": "single",
+      "max_tokens": 128,
+      "expected_sha256": "cfc89e0e335f58314fb6d7e101884765e6fbdee5156928d54f1e5f15b21743fb",
+      "expected_bytes": 1064
+    },
+    {
+      "stage": "generation",
+      "state": {
+        "text": "北京广州"
+      },
+      "calls": [
+        {
+          "id": "x",
+          "operation": "extract",
+          "kwargs": {
+            "instructions": "地点",
+            "max_items": 2,
+            "max_length_per_item": 4,
+            "source_field": "text"
+          }
+        },
+        {
+          "id": "y",
+          "operation": "generate",
+          "kwargs": {
+            "instructions": "标题",
+            "max_length": 8
+          }
+        }
+      ],
+      "options": {
+        "profile": "qwen_vllm",
+        "extract_mode": "substring_chars",
+        "request_policy": {
+          "sampling": {
+            "temperature": 0,
+            "top_p": 1,
+            "top_k": -1,
+            "min_p": 0,
+            "repetition_penalty": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "default_max_tokens": 128,
+          "context_window": 8192,
+          "bounded_outputs": true,
+          "tokenizer": {
+            "revision": "fixture",
+            "files": {
+              "tokenizer.json": "0000000000000000000000000000000000000000000000000000000000000000",
+              "tokenizer_config.json": "0000000000000000000000000000000000000000000000000000000000000000",
+              "chat_template.jinja": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        }
+      },
+      "mode": "batch",
+      "max_tokens": 128,
+      "expected_sha256": "e63f5bf1cefc6c9f727ff524a6cba622f70cbd775d12c89c4ef6f881fba1a02c",
+      "expected_bytes": 1706
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "format": "lev-request-spec",
+  "version": 1,
+  "stage": "generation",
+  "model": "example-model",
+  "state": {
+    "text": "alpha beta"
+  },
+  "calls": [
+    {
+      "id": "a",
+      "operation": "generate",
+      "arguments": {
+        "instructions": "Write a title.",
+        "field_name": "title",
+        "max_length": 64
+      }
+    }
+  ]
+}

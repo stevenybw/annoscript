@@ -52,7 +52,7 @@ def answer(call):
 class FrozenWireTests(unittest.IsolatedAsyncioTestCase):
     async def test_111_pre_refactor_bodies_default_and_explicit_on_real_send_path(self):
         fixture = json.loads(BASELINE.read_text())
-        self.assertEqual(fixture['source_head'], 'e034530f5923f43dd9115b19ed561c85f950120b')
+        self.assertEqual(fixture['source_head'], 'synthetic-request-adapter-v1')
         self.assertEqual(len(fixture['cases']), 111)
         for index, case in enumerate(fixture['cases']):
             for explicit in (False, True):

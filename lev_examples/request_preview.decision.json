@@ -1,0 +1,23 @@
+{
+  "format": "lev-request-spec",
+  "version": 1,
+  "stage": "decision",
+  "model": "example-model",
+  "state": {
+    "text": "alpha beta"
+  },
+  "calls": [
+    {
+      "id": "a",
+      "operation": "choice",
+      "arguments": {
+        "instructions": "Choose a category.",
+        "criteria": {
+          "note": "A note",
+          "other": "Other text"
+        },
+        "field_name": "category"
+      }
+    }
+  ]
+}
