@@ -71,7 +71,18 @@ class Store(MetricStore):
             self.clock_epoch = None
         self.session_ttl, self.lease_seconds, self.retention_seconds = session_ttl, lease_seconds, retention_seconds
         with self._connection() as db:
-            db.execute("PRAGMA journal_mode=WAL")
+            # Switching journal mode can return BUSY immediately when several
+            # processes initialize the same file. Retry only this startup step.
+            deadline = time.monotonic() + 5.0
+            while True:
+                try:
+                    db.execute("PRAGMA journal_mode=WAL")
+                    break
+                except sqlite3.OperationalError as error:
+                    code = getattr(error, "sqlite_errorcode", 0)
+                    if code & 0xff != sqlite3.SQLITE_BUSY or time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.01)
             db.execute("BEGIN IMMEDIATE")
             version = db.execute("PRAGMA user_version").fetchone()[0]
             if version == 0:

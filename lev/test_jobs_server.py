@@ -300,6 +300,44 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(len(stores), 6)
         self.assertEqual(stores[0].create_session("alice", "key"), stores[-1].create_session("alice", "key"))
 
+    def test_initialization_recovers_from_transient_journal_busy(self):
+        connect = sqlite3.connect
+
+        class BusyOnce(sqlite3.Connection):
+            def execute(self, statement, *args, **kwargs):
+                if statement == "PRAGMA journal_mode=WAL" and not getattr(self, "injected", False):
+                    self.injected = True
+                    error = sqlite3.OperationalError("database is locked")
+                    error.sqlite_errorcode = sqlite3.SQLITE_BUSY | (1 << 8)
+                    raise error
+                return super().execute(statement, *args, **kwargs)
+
+        with patch("lev.server.store.sqlite3.connect",
+                   side_effect=lambda *a, **kw: connect(*a, factory=BusyOnce, **kw)):
+            store = Store(Path(self.folder.name, "busy.sqlite"), clock=self.clock)
+            first = store.create_session("alice", "stable-key")
+            self.assertEqual(first, store.create_session("alice", "stable-key"))
+
+    def test_initialization_preserves_non_busy_database_error(self):
+        connect = sqlite3.connect
+        error = sqlite3.OperationalError("injected storage error")
+        error.sqlite_errorcode = sqlite3.SQLITE_IOERR
+        attempts = []
+
+        class Broken(sqlite3.Connection):
+            def execute(self, statement, *args, **kwargs):
+                if statement == "PRAGMA journal_mode=WAL":
+                    attempts.append(statement)
+                    raise error
+                return super().execute(statement, *args, **kwargs)
+
+        with patch("lev.server.store.sqlite3.connect",
+                   side_effect=lambda *a, **kw: connect(*a, factory=Broken, **kw)):
+            with self.assertRaises(sqlite3.OperationalError) as caught:
+                Store(Path(self.folder.name, "broken.sqlite"), clock=self.clock)
+        self.assertIs(caught.exception, error)
+        self.assertEqual(len(attempts), 1)
+
     def test_input_key_order_conflicts_even_when_values_match(self):
         self.submit(({"a": 1, "b": 2},))
         with self.assertRaises(ServiceError) as error:
