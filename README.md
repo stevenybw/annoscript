@@ -13,8 +13,15 @@ Use Python **3.10+**. Two commands install AnnoScript and run the packaged synth
 example with real model results, without deploying a server or obtaining model keys:
 
 ```bash
-pip install annoscript
+pip install --upgrade "annoscript>=0.2.1"
 python -m annoscript_examples.quick_start
+```
+
+Python 3.10 Quick Start support starts in **0.2.1**. If a package mirror has not
+synchronized the release, install from the official index:
+
+```bash
+python -m pip install --upgrade --index-url https://pypi.org/simple "annoscript>=0.2.1"
 ```
 
 The example runs Python locally and sends model-operation inputs to the official
