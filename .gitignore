@@ -11,3 +11,5 @@ credential.sh
 dist/
 build/
 *.egg-info/
+
+!deploy/server/.env.example
