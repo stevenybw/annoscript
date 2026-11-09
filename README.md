@@ -6,23 +6,59 @@ operations can use separate model backends while sharing program state.
 
 The client supports Python 3.10+. Runtime and server execution require Python 3.12+.
 
-## Install
+## Quick Start
+
+Use Python **3.12+**. Two commands install AnnoScript and run the packaged synthetic
+example with real model results, without deploying a server or obtaining model keys:
 
 ```bash
 pip install annoscript
-# Local execution and the durable server (Python 3.12+):
-pip install 'annoscript[server]'
-# Optional pinned local tokenizer support:
-pip install 'annoscript[tokenizer]'
+python -m annoscript_examples.quick_start
 ```
 
-Python imports use `annoscript`, for example `from annoscript.client import AnnoClient`.
-The eDSL context is `annoscript.anno.Anno`; the runtime and durable-job clients are
-`AnnoRuntime`, `AnnoJobClient`, and `AnnoRemoteClient` in their corresponding modules.
-This release replaces the former Lev Python namespace. Version-1 serialized IR,
-execution plans, durable-job protocols and the `legacy` backend profile remain compatible.
+The example runs Python locally and sends model-operation inputs to the official
+anonymous gateway at **https://annoscript.chukonu.ai**, the same gateway used by the
+[Playground](https://annoscript.chukonu.ai/#playground). Shared limits apply: 1,000
+sessions/day globally, 50/IP/day, 5/IP/minute, four active sessions; each session
+lasts 120 seconds with 12 requests and an 8,192 output-token budget. Limits can
+make the demo unavailable. Do not send confidential inputs to the hosted demo.
 
-## Synthetic example
+The same packaged program is available through the Python API:
+
+```python
+from annoscript.client import AnnoClient
+from annoscript_examples.request import annotate
+from annoscript_examples.quick_start import SAMPLE
+
+with AnnoClient.server() as client:
+    with client.submit(annotate, [SAMPLE]) as results:
+        for result in results:
+            if result.status != "success":
+                raise RuntimeError(result.error.message)
+            print(result.value)
+```
+
+Programs, local validation, compilation and scheduling execute on your computer.
+Only validated model operations go to the server, which handles model calls,
+authentication and quotas. The client creates a session at its first model
+operation and closes it on exit. Quota, budget and timeout errors do not trigger
+automatic retries or session renewal. No provider credentials are read or sent.
+
+## Deploy Your Own AnnoScript Server
+
+For your own models, access policy and storage, follow the advanced
+[deployment tutorial](docs/deploy-server.md). It includes Docker Compose,
+configuration, persistent quota storage, health checks and HTTPS. It uses the
+same gateway architecture; user Python stays on the user's machine or browser.
+Connect with `AnnoClient.server("https://annotations.example.com", auth_token=...)`.
+The server access token is distinct from model provider keys kept on the server.
+
+Existing local execution, durable-job clients and serialized protocols remain
+compatible. These clients still support Python 3.10+; the new local-runtime gateway
+client and server require Python 3.12+. Optional extras are `annoscript[server]`
+for hosting and `annoscript[tokenizer]` for pinned local tokenizer support.
+
+## Offline tools and synthetic example
 
 `annoscript_examples.request.annotate` classifies a synthetic document, conditionally
 generates a title, and produces tags and source spans. The example demonstrates

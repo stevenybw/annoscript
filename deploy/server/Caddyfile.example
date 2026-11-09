@@ -1,0 +1,4 @@
+# Run Caddy on the same host as the loopback-published gateway.
+annotations.example.com {
+    reverse_proxy 127.0.0.1:8000
+}

@@ -1,0 +1,26 @@
+name: annoscript-server
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ANNO_QUOTA_DB: /data/quota.sqlite
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["quota:/data"]
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    mem_limit: 1g
+    pids_limit: 256
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+volumes:
+  quota:

@@ -95,4 +95,4 @@ jobs:
           /tmp/anno-installed/bin/pip install dist/*.whl
           cd /tmp
           /tmp/anno-installed/bin/python -m annoscript.client_tests -q
-          /tmp/anno-installed/bin/python -c "import importlib.metadata as m; import importlib.util as u; from pathlib import Path; import annoscript; assert m.version('annoscript') == '0.1.0'; assert u.find_spec('lev') is None; assert Path(annoscript.__file__).with_name('_plan_viewer.html').is_file()"
+          /tmp/anno-installed/bin/python -c "import importlib.metadata as m; import importlib.util as u; from pathlib import Path; import annoscript; assert m.version('annoscript') == '0.2.0'; assert u.find_spec('lev') is None; assert Path(annoscript.__file__).with_name('_plan_viewer.html').is_file()"

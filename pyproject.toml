@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "annoscript"
-version = "0.1.0"
+version = "0.2.0"
 description = "AnnoScript: Programmable AI Annotation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,5 +39,5 @@ packages = ["annoscript", "annoscript_examples"]
 include = [
   "/annoscript", "/annoscript_examples", "/README.md", "/LICENSE",
   "/pyproject.toml", "/design_api.md", "/motivation.md", "/remote_protocol.md",
-  "/job_protocol.md", "/requirements*.txt", "/third_party/xgrammar",
+  "/.dockerignore", "/docs", "/deploy", "/job_protocol.md", "/requirements*.txt", "/third_party/xgrammar",
 ]

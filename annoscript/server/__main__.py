@@ -1,4 +1,4 @@
-"""python -m annoscript.server {api,worker} --db jobs.sqlite --config service.json"""
+"""python -m annoscript.server {gateway,api,worker} --db jobs.sqlite --config service.json"""
 
 import argparse
 import asyncio
@@ -10,15 +10,26 @@ from annoscript.server.store import Store
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("api", "worker", "releases"))
+    parser.add_argument("command", choices=("gateway", "api", "worker", "releases"))
     parser.add_argument("--db", default="anno-jobs.sqlite")
-    parser.add_argument("--config", required=True)
+    parser.add_argument("--config")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--concurrency", type=int, default=8)
     parser.add_argument("--max-generation-inflight", type=int)
     parser.add_argument("--max-decision-inflight", type=int)
     args = parser.parse_args()
+    if args.command == "gateway":
+        import uvicorn
+        from annoscript.server.gateway import app_from_env
+        try:
+            app = app_from_env()
+        except ValueError as exc:
+            parser.error(str(exc))
+        uvicorn.run(app, host=args.host, port=args.port, workers=1, access_log=False)
+        return
+    if not args.config:
+        parser.error("--config is required for api, worker and releases")
     releases, tokens = load_config(args.config)
     if args.command == "releases":
         from annoscript.job_protocol import encode

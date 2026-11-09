@@ -45,6 +45,26 @@ class AnnoClient:
         self.closed = False
 
     @classmethod
+    def server(cls, base_url="https://annoscript.chukonu.ai", auth_token=None, *,
+               mode="eager", timeout=45.0):
+        """Execute Python locally; send only model operations to a gateway (3.12+).
+
+        No environment credentials are read. The official endpoint is anonymous.
+        Construction is offline; one session starts at the first model operation.
+        Limits and transport failures are reported without renewing or retrying.
+        """
+        import sys
+        if sys.version_info < (3, 12):
+            raise RuntimeError("AnnoClient.server requires Python 3.12+; existing remote clients support 3.10+")
+        from annoscript._gateway import GatewaySession, GatewayBackend
+        from annoscript.runtime import AnnoRuntime
+        session = GatewaySession(base_url, auth_token, timeout)
+        return cls(AnnoRuntime(GatewayBackend(session), GatewayBackend(session),
+            max_active_runs=1, max_decision_inflight=1, max_llm_inflight=1,
+            max_llm_batch_calls=8, max_llm_batch_input_bytes=65536,
+            max_llm_batch_output_tokens=4096), mode=mode)
+
+    @classmethod
     def remote(cls, base_url, auth_token=None, *, mode="eager", optimize=True,
                timeout=30.0, transport=None):
         """Use session-owned durable jobs with in-memory reconnect state.
