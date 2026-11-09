@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 env:
-  LEV_RUN_LIVE_TESTS: "0"
+  ANNO_RUN_LIVE_TESTS: "0"
 
 jobs:
   grammar:
@@ -22,7 +22,7 @@ jobs:
       # Preinstall CPU PyTorch so XGrammar does not pull CUDA runtime wheels.
       - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install -r requirements-test-grammar.txt
-      - run: python -m lev.grammar_tests -v
+      - run: python -m annoscript.grammar_tests -v
 
   client:
     runs-on: ubuntu-latest
@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -r requirements.txt
-      - run: python -m lev.client_tests -q
+      - run: python -m annoscript.client_tests -q
 
   runtime:
     runs-on: ubuntu-latest
@@ -69,10 +69,30 @@ jobs:
           "${{ steps.client.outputs.python-path }}" -m pip install -r requirements.txt
           "${{ steps.server.outputs.python-path }}" -m pip install -r requirements-server.txt
       - run: >-
-          python -m lev.cross_version_tests
+          python -m annoscript.cross_version_tests
           --client-python "${{ steps.client.outputs.python-path }}"
           --server-python "${{ steps.server.outputs.python-path }}"
+
       - run: >-
-          "${{ steps.server.outputs.python-path }}" -m lev.job_cross_version_tests
+          "${{ steps.server.outputs.python-path }}" -m annoscript.job_cross_version_tests
           --client-python "${{ steps.client.outputs.python-path }}"
           --server-python "${{ steps.server.outputs.python-path }}"
+
+  package:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install build twine
+      - run: python -m build && python -m twine check dist/*
+      - run: |
+          python -m venv /tmp/anno-installed
+          /tmp/anno-installed/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/anno-installed/bin/python -m annoscript.client_tests -q
+          /tmp/anno-installed/bin/python -c "import importlib.metadata as m; import importlib.util as u; from pathlib import Path; import annoscript; assert m.version('annoscript') == '0.1.0'; assert u.find_spec('lev') is None; assert Path(annoscript.__file__).with_name('_plan_viewer.html').is_file()"

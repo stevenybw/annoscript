@@ -18,7 +18,7 @@ def complete(data):
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--tokenizer',required=True);ap.add_argument('--lev-root',required=True);ap.add_argument('--output',required=True);ap.add_argument('--expect-vulnerable',action='store_true');a=ap.parse_args()
  sys.path.insert(0,a.lev_root)
- from lev.backends._bounded_grammar import grammar
+ from annoscript.backends._bounded_grammar import grammar
  from transformers import AutoTokenizer
  start=time.perf_counter();errors=[];checks=0;known_holes=[]
  def check(ok,where):

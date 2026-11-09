@@ -8,3 +8,6 @@ lev-live-report*.json
 *.pem
 *.key
 credential.sh
+dist/
+build/
+*.egg-info/

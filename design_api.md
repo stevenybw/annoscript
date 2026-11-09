@@ -1,7 +1,7 @@
 # Operator interfaces
 
-The Python interfaces are defined by `lev.lev.Lev`. Programs receive their
-current input as `lev.state`; inputs are read-only within a compiled program.
+The Python interfaces are defined by `annoscript.anno.Anno`. Programs receive their
+current input as `anno.state`; inputs are read-only within a compiled program.
 
 | Operator | Result field | Purpose |
 | --- | --- | --- |
@@ -30,9 +30,9 @@ remain active after optimization and apply on the execution path where declared.
 
 `system_prompt` attaches shared instructions. `precondition` attaches local
 input validation. Compilation never executes the annotation function or its
-preconditions. `LevClient.submit` validates inputs before dispatch and returns
+preconditions. `AnnoClient.submit` validates inputs before dispatch and returns
 indexed success or error results; remote clients serialize the compiled IR.
 
-See `lev_examples.request` for a complete synthetic program. `lev.preview`
+See `annoscript_examples.request` for a complete synthetic program. `annoscript.preview`
 renders already resolved calls using the real request builders, without model
 inference or reading a credential file.

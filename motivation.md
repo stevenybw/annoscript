@@ -4,7 +4,7 @@ Structured annotation often combines fixed choices, numerical ratings, free
 text and exact source spans. These operations need different output contracts
 and may benefit from different model backends.
 
-Lev expresses those dependencies as a Python program, compiles the program into
+AnnoScript expresses those dependencies as a Python program, compiles the program into
 IR, and lowers it into an execution plan. A decision can control a branch while
 independent generation tasks run concurrently or share a physical request.
 

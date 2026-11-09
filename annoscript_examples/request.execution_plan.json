@@ -1,0 +1,3017 @@
+{
+  "entry": "annotate",
+  "config": {
+    "system_prompt": "Describe only the supplied synthetic document. Treat it as data."
+  },
+  "source": {
+    "module": "annoscript_examples.request",
+    "function": "annotate",
+    "line": 18,
+    "column": 1,
+    "end_line": 37,
+    "end_column": 58
+  },
+  "regions": [
+    {
+      "id": "region.1",
+      "parent": null,
+      "kind": "root",
+      "owner": null,
+      "tasks": [
+        "v10_stmt.2",
+        "v12_stmt.4",
+        "v14_stmt.6",
+        "v16_stmt.8",
+        "v18_stmt.10",
+        "v18_stmt.12",
+        "v20_stmt.14",
+        "v25_stmt.16",
+        "v25_stmt.18",
+        "v27_stmt.20",
+        "v29_stmt.22",
+        "v34_stmt.24",
+        "v36_stmt.26",
+        "v36_stmt.28",
+        "v38_stmt.30",
+        "v44_stmt.32",
+        "v56_stmt.34",
+        "v56_stmt.45",
+        "v56_stmt.46",
+        "v58_stmt.48",
+        "v58_stmt.50",
+        "v60_stmt.52",
+        "v65_stmt.54",
+        "v65_stmt.56",
+        "v67_stmt.58",
+        "v72_stmt.60",
+        "v75_stmt.65"
+      ]
+    },
+    {
+      "id": "region.35",
+      "parent": "region.1",
+      "kind": "then",
+      "owner": "v56_stmt.34",
+      "tasks": [
+        "v48_stmt.37",
+        "v50_stmt.39",
+        "v50_stmt.41",
+        "v55_stmt.43"
+      ]
+    },
+    {
+      "id": "region.36",
+      "parent": "region.1",
+      "kind": "else",
+      "owner": "v56_stmt.34",
+      "tasks": []
+    },
+    {
+      "id": "region.61",
+      "parent": "region.1",
+      "kind": "loop",
+      "owner": "v72_stmt.60",
+      "tasks": [
+        "v72_stmt.62",
+        "v71_stmt.64"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "kind": "eval",
+      "id": "v10_stmt.2",
+      "region": "region.1",
+      "origin": "v10_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 20,
+          "column": 27,
+          "end_line": 20,
+          "end_column": 68
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.3"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "dict",
+          "entries": [
+            [
+              {
+                "kind": "literal",
+                "value": "note"
+              },
+              {
+                "kind": "literal",
+                "value": "A note"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "other"
+              },
+              {
+                "kind": "literal",
+                "value": "Other text"
+              }
+            ]
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v12_stmt.4",
+      "region": "region.1",
+      "origin": "v12_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 22,
+          "column": 51,
+          "end_line": 22,
+          "end_column": 57
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.5"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "dict",
+          "entries": [
+            [
+              {
+                "kind": "literal",
+                "value": "text"
+              },
+              {
+                "kind": "literal",
+                "value": "alpha beta"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "kind"
+              },
+              {
+                "kind": "literal",
+                "value": "note"
+              }
+            ]
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v14_stmt.6",
+      "region": "region.1",
+      "origin": "v14_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 22,
+          "column": 37,
+          "end_line": 22,
+          "end_column": 73
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.7"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "intrinsic",
+          "name": "example",
+          "args": [
+            {
+              "kind": "var",
+              "name": "v11_tmp"
+            },
+            {
+              "kind": "literal",
+              "value": "note"
+            }
+          ],
+          "kwargs": []
+        },
+        "bindings": [
+          {
+            "name": "v11_tmp",
+            "value": "value.5"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v16_stmt.8",
+      "region": "region.1",
+      "origin": "v16_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 22,
+          "column": 36,
+          "end_line": 22,
+          "end_column": 74
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.9"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "list",
+          "items": [
+            {
+              "kind": "var",
+              "name": "v13_tmp"
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v13_tmp",
+            "value": "value.7"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v18_stmt.10",
+      "region": "region.1",
+      "origin": "v18_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 19,
+          "column": 16,
+          "end_line": 22,
+          "end_column": 75
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.11"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Choose the document category."
+                },
+                {
+                  "kind": "var",
+                  "name": "v9_tmp"
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "category"
+                },
+                {
+                  "kind": "var",
+                  "name": "v15_tmp"
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v15_tmp",
+            "value": "value.9"
+          },
+          {
+            "name": "v9_tmp",
+            "value": "value.3"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v18_stmt.12",
+      "region": "region.1",
+      "origin": "v18_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 19,
+          "column": 16,
+          "end_line": 22,
+          "end_column": 75
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.13"
+      ],
+      "gates": [],
+      "request": "request.66",
+      "arguments": "value.11",
+      "keywords": [
+        "field_name",
+        "examples"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v20_stmt.14",
+      "region": "region.1",
+      "origin": "v20_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 19,
+          "column": 16,
+          "end_line": 22,
+          "end_column": 82
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.15"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v17_choice"
+          },
+          "name": "choice"
+        },
+        "bindings": [
+          {
+            "name": "v17_choice",
+            "value": "value.13"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v25_stmt.16",
+      "region": "region.1",
+      "origin": "v25_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 23,
+          "column": 19,
+          "end_line": 23,
+          "end_column": 87
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.17"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Does the document need a title?"
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "highlight"
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v25_stmt.18",
+      "region": "region.1",
+      "origin": "v25_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 23,
+          "column": 19,
+          "end_line": 23,
+          "end_column": 87
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.19"
+      ],
+      "gates": [],
+      "request": "request.67",
+      "arguments": "value.17",
+      "keywords": [
+        "field_name"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v27_stmt.20",
+      "region": "region.1",
+      "origin": "v27_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 23,
+          "column": 19,
+          "end_line": 23,
+          "end_column": 92
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.21"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v24_noul"
+          },
+          "name": "noul"
+        },
+        "bindings": [
+          {
+            "name": "v24_noul",
+            "value": "value.19"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v29_stmt.22",
+      "region": "region.1",
+      "origin": "v29_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 23,
+          "column": 95,
+          "end_line": 23,
+          "end_column": 98
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.23"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "compare",
+          "left": {
+            "kind": "var",
+            "name": "v26_tmp"
+          },
+          "ops": [
+            "gt"
+          ],
+          "comparators": [
+            {
+              "kind": "literal",
+              "value": 0.5
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v26_tmp",
+            "value": "value.21"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v34_stmt.24",
+      "region": "region.1",
+      "origin": "v34_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 24,
+          "column": 50,
+          "end_line": 24,
+          "end_column": 65
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.25"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "list",
+          "items": [
+            {
+              "kind": "literal",
+              "value": "low"
+            },
+            {
+              "kind": "literal",
+              "value": "high"
+            }
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v36_stmt.26",
+      "region": "region.1",
+      "origin": "v36_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 24,
+          "column": 18,
+          "end_line": 24,
+          "end_column": 88
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.27"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Rate the clarity."
+                },
+                {
+                  "kind": "var",
+                  "name": "v33_tmp"
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "clarity"
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v33_tmp",
+            "value": "value.25"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v36_stmt.28",
+      "region": "region.1",
+      "origin": "v36_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 24,
+          "column": 18,
+          "end_line": 24,
+          "end_column": 88
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.29"
+      ],
+      "gates": [],
+      "request": "request.68",
+      "arguments": "value.27",
+      "keywords": [
+        "field_name"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v38_stmt.30",
+      "region": "region.1",
+      "origin": "v38_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 24,
+          "column": 18,
+          "end_line": 24,
+          "end_column": 94
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.31"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v35_score"
+          },
+          "name": "score"
+        },
+        "bindings": [
+          {
+            "name": "v35_score",
+            "value": "value.29"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v44_stmt.32",
+      "region": "region.1",
+      "origin": "v44_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 25,
+          "column": 5,
+          "end_line": 25,
+          "end_column": 10
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.33"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "literal",
+          "value": null
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "branch",
+      "id": "v56_stmt.34",
+      "region": "region.1",
+      "origin": "v56_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 26,
+          "column": 5,
+          "end_line": 29,
+          "end_column": 71
+        },
+        "calls": []
+      },
+      "outputs": [],
+      "gates": [],
+      "condition": {
+        "expression": {
+          "kind": "var",
+          "name": "v28_comparison"
+        },
+        "bindings": [
+          {
+            "name": "v28_comparison",
+            "value": "value.23"
+          }
+        ]
+      },
+      "then_region": "region.35",
+      "else_region": "region.36"
+    },
+    {
+      "kind": "eval",
+      "id": "v48_stmt.37",
+      "region": "region.35",
+      "origin": "v48_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 29,
+          "column": 43,
+          "end_line": 29,
+          "end_column": 65
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.38"
+      ],
+      "gates": [
+        {
+          "task": "v56_stmt.34",
+          "port": "true"
+        }
+      ],
+      "expression": {
+        "expression": {
+          "kind": "list",
+          "items": [
+            {
+              "kind": "literal",
+              "value": "Return null when the document does not support a title."
+            }
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v50_stmt.39",
+      "region": "region.35",
+      "origin": "v50_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 27,
+          "column": 17,
+          "end_line": 29,
+          "end_column": 66
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.40"
+      ],
+      "gates": [
+        {
+          "task": "v56_stmt.34",
+          "port": "true"
+        }
+      ],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Write a short title."
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "title"
+                },
+                {
+                  "kind": "literal",
+                  "value": true
+                },
+                {
+                  "kind": "literal",
+                  "value": 64
+                },
+                {
+                  "kind": "literal",
+                  "value": 64
+                },
+                {
+                  "kind": "var",
+                  "name": "v47_tmp"
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v47_tmp",
+            "value": "value.38"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v50_stmt.41",
+      "region": "region.35",
+      "origin": "v50_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 27,
+          "column": 17,
+          "end_line": 29,
+          "end_column": 66
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.42"
+      ],
+      "gates": [
+        {
+          "task": "v56_stmt.34",
+          "port": "true"
+        }
+      ],
+      "request": "request.69",
+      "arguments": "value.40",
+      "keywords": [
+        "field_name",
+        "nullable",
+        "max_length",
+        "max_num_tokens",
+        "requirements"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v55_stmt.43",
+      "region": "region.35",
+      "origin": "v55_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 27,
+          "column": 9,
+          "end_line": 27,
+          "end_column": 14
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.44"
+      ],
+      "gates": [
+        {
+          "task": "v56_stmt.34",
+          "port": "true"
+        }
+      ],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v49_generate"
+          },
+          "name": "text"
+        },
+        "bindings": [
+          {
+            "name": "v49_generate",
+            "value": "value.42"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "join",
+      "id": "v56_stmt.45",
+      "region": "region.1",
+      "origin": "v56_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 26,
+          "column": 5,
+          "end_line": 29,
+          "end_column": 71
+        },
+        "calls": []
+      },
+      "outputs": [],
+      "gates": [],
+      "branch": "v56_stmt.34"
+    },
+    {
+      "kind": "merge",
+      "id": "v56_stmt.46",
+      "region": "region.1",
+      "origin": "v56_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 26,
+          "column": 5,
+          "end_line": 29,
+          "end_column": 71
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.47"
+      ],
+      "gates": [],
+      "branch": "v56_stmt.34",
+      "then_value": "value.44",
+      "else_value": "value.33"
+    },
+    {
+      "kind": "eval",
+      "id": "v58_stmt.48",
+      "region": "region.1",
+      "origin": "v58_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 30,
+          "column": 12,
+          "end_line": 31,
+          "end_column": 85
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.49"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Name up to three short tags."
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "tags"
+                },
+                {
+                  "kind": "literal",
+                  "value": 3
+                },
+                {
+                  "kind": "literal",
+                  "value": 32
+                },
+                {
+                  "kind": "literal",
+                  "value": 64
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v58_stmt.50",
+      "region": "region.1",
+      "origin": "v58_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 30,
+          "column": 12,
+          "end_line": 31,
+          "end_column": 85
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.51"
+      ],
+      "gates": [],
+      "request": "request.70",
+      "arguments": "value.49",
+      "keywords": [
+        "field_name",
+        "max_items",
+        "max_length_per_item",
+        "max_num_tokens"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v60_stmt.52",
+      "region": "region.1",
+      "origin": "v60_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 30,
+          "column": 12,
+          "end_line": 31,
+          "end_column": 91
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.53"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v57_generate_list"
+          },
+          "name": "items"
+        },
+        "bindings": [
+          {
+            "name": "v57_generate_list",
+            "value": "value.51"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "eval",
+      "id": "v65_stmt.54",
+      "region": "region.1",
+      "origin": "v65_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 32,
+          "column": 13,
+          "end_line": 33,
+          "end_column": 80
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.55"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "Copy short spans from text."
+                }
+              ]
+            },
+            {
+              "kind": "tuple",
+              "items": [
+                {
+                  "kind": "literal",
+                  "value": "text"
+                },
+                {
+                  "kind": "literal",
+                  "value": "spans"
+                },
+                {
+                  "kind": "literal",
+                  "value": 3
+                },
+                {
+                  "kind": "literal",
+                  "value": 64
+                },
+                {
+                  "kind": "literal",
+                  "value": 64
+                }
+              ]
+            }
+          ]
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "infer_site",
+      "id": "v65_stmt.56",
+      "region": "region.1",
+      "origin": "v65_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 32,
+          "column": 13,
+          "end_line": 33,
+          "end_column": 80
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.57"
+      ],
+      "gates": [],
+      "request": "request.71",
+      "arguments": "value.55",
+      "keywords": [
+        "source_field",
+        "field_name",
+        "max_items",
+        "max_length_per_item",
+        "max_num_tokens"
+      ]
+    },
+    {
+      "kind": "eval",
+      "id": "v67_stmt.58",
+      "region": "region.1",
+      "origin": "v67_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 32,
+          "column": 13,
+          "end_line": 33,
+          "end_column": 86
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.59"
+      ],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "field",
+          "value": {
+            "kind": "var",
+            "name": "v64_extract"
+          },
+          "name": "items"
+        },
+        "bindings": [
+          {
+            "name": "v64_extract",
+            "value": "value.57"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "loop",
+      "id": "v72_stmt.60",
+      "region": "region.1",
+      "origin": "v72_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 34,
+          "column": 5,
+          "end_line": 35,
+          "end_column": 81
+        },
+        "calls": []
+      },
+      "outputs": [],
+      "gates": [],
+      "iterable": {
+        "expression": {
+          "kind": "var",
+          "name": "v66_tmp"
+        },
+        "bindings": [
+          {
+            "name": "v66_tmp",
+            "value": "value.59"
+          }
+        ]
+      },
+      "body": "region.61",
+      "exports": [],
+      "serial_modes": [
+        "strict"
+      ]
+    },
+    {
+      "kind": "iteration",
+      "id": "v72_stmt.62",
+      "region": "region.61",
+      "origin": "v72_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 34,
+          "column": 5,
+          "end_line": 35,
+          "end_column": 81
+        },
+        "calls": []
+      },
+      "outputs": [
+        "value.63"
+      ],
+      "gates": [
+        {
+          "task": "v72_stmt.60",
+          "port": "enter"
+        }
+      ],
+      "loop": "v72_stmt.60",
+      "target": {
+        "kind": "name_target",
+        "name": "v8_span"
+      }
+    },
+    {
+      "kind": "check",
+      "id": "v71_stmt.64",
+      "region": "region.61",
+      "origin": "v71_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 35,
+          "column": 9,
+          "end_line": 35,
+          "end_column": 81
+        },
+        "calls": []
+      },
+      "outputs": [],
+      "gates": [
+        {
+          "task": "v72_stmt.60",
+          "port": "enter"
+        }
+      ],
+      "condition": {
+        "expression": {
+          "kind": "compare",
+          "left": {
+            "kind": "var",
+            "name": "v8_span"
+          },
+          "ops": [
+            "in"
+          ],
+          "comparators": [
+            {
+              "kind": "get_item",
+              "value": {
+                "kind": "state"
+              },
+              "index": {
+                "kind": "literal",
+                "value": "text"
+              }
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v8_span",
+            "value": "value.63"
+          }
+        ]
+      },
+      "message": {
+        "expression": {
+          "kind": "literal",
+          "value": "span must occur in text"
+        },
+        "bindings": []
+      }
+    },
+    {
+      "kind": "return",
+      "id": "v75_stmt.65",
+      "region": "region.1",
+      "origin": "v75_stmt",
+      "source": {
+        "span": {
+          "module": "annoscript_examples.request",
+          "function": "annotate",
+          "line": 36,
+          "column": 5,
+          "end_line": 37,
+          "end_column": 58
+        },
+        "calls": []
+      },
+      "outputs": [],
+      "gates": [],
+      "expression": {
+        "expression": {
+          "kind": "dict",
+          "entries": [
+            [
+              {
+                "kind": "literal",
+                "value": "category"
+              },
+              {
+                "kind": "var",
+                "name": "v19_tmp"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "highlight"
+              },
+              {
+                "kind": "var",
+                "name": "v28_comparison"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "clarity"
+              },
+              {
+                "kind": "var",
+                "name": "v37_tmp"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "title"
+              },
+              {
+                "kind": "var",
+                "name": "v5_title"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "tags"
+              },
+              {
+                "kind": "var",
+                "name": "v59_tmp"
+              }
+            ],
+            [
+              {
+                "kind": "literal",
+                "value": "spans"
+              },
+              {
+                "kind": "var",
+                "name": "v66_tmp"
+              }
+            ]
+          ]
+        },
+        "bindings": [
+          {
+            "name": "v19_tmp",
+            "value": "value.15"
+          },
+          {
+            "name": "v28_comparison",
+            "value": "value.23"
+          },
+          {
+            "name": "v37_tmp",
+            "value": "value.31"
+          },
+          {
+            "name": "v59_tmp",
+            "value": "value.53"
+          },
+          {
+            "name": "v5_title",
+            "value": "value.47"
+          },
+          {
+            "name": "v66_tmp",
+            "value": "value.59"
+          }
+        ]
+      }
+    }
+  ],
+  "values": [
+    {
+      "id": "value.3",
+      "producer": "v10_stmt.2",
+      "name": "v9_tmp"
+    },
+    {
+      "id": "value.5",
+      "producer": "v12_stmt.4",
+      "name": "v11_tmp"
+    },
+    {
+      "id": "value.7",
+      "producer": "v14_stmt.6",
+      "name": "v13_tmp"
+    },
+    {
+      "id": "value.9",
+      "producer": "v16_stmt.8",
+      "name": "v15_tmp"
+    },
+    {
+      "id": "value.11",
+      "producer": "v18_stmt.10",
+      "name": null
+    },
+    {
+      "id": "value.13",
+      "producer": "v18_stmt.12",
+      "name": "v17_choice"
+    },
+    {
+      "id": "value.15",
+      "producer": "v20_stmt.14",
+      "name": "v19_tmp"
+    },
+    {
+      "id": "value.17",
+      "producer": "v25_stmt.16",
+      "name": null
+    },
+    {
+      "id": "value.19",
+      "producer": "v25_stmt.18",
+      "name": "v24_noul"
+    },
+    {
+      "id": "value.21",
+      "producer": "v27_stmt.20",
+      "name": "v26_tmp"
+    },
+    {
+      "id": "value.23",
+      "producer": "v29_stmt.22",
+      "name": "v28_comparison"
+    },
+    {
+      "id": "value.25",
+      "producer": "v34_stmt.24",
+      "name": "v33_tmp"
+    },
+    {
+      "id": "value.27",
+      "producer": "v36_stmt.26",
+      "name": null
+    },
+    {
+      "id": "value.29",
+      "producer": "v36_stmt.28",
+      "name": "v35_score"
+    },
+    {
+      "id": "value.31",
+      "producer": "v38_stmt.30",
+      "name": "v37_tmp"
+    },
+    {
+      "id": "value.33",
+      "producer": "v44_stmt.32",
+      "name": "v5_title"
+    },
+    {
+      "id": "value.38",
+      "producer": "v48_stmt.37",
+      "name": "v47_tmp"
+    },
+    {
+      "id": "value.40",
+      "producer": "v50_stmt.39",
+      "name": null
+    },
+    {
+      "id": "value.42",
+      "producer": "v50_stmt.41",
+      "name": "v49_generate"
+    },
+    {
+      "id": "value.44",
+      "producer": "v55_stmt.43",
+      "name": "v5_title"
+    },
+    {
+      "id": "value.47",
+      "producer": "v56_stmt.46",
+      "name": "v5_title"
+    },
+    {
+      "id": "value.49",
+      "producer": "v58_stmt.48",
+      "name": null
+    },
+    {
+      "id": "value.51",
+      "producer": "v58_stmt.50",
+      "name": "v57_generate_list"
+    },
+    {
+      "id": "value.53",
+      "producer": "v60_stmt.52",
+      "name": "v59_tmp"
+    },
+    {
+      "id": "value.55",
+      "producer": "v65_stmt.54",
+      "name": null
+    },
+    {
+      "id": "value.57",
+      "producer": "v65_stmt.56",
+      "name": "v64_extract"
+    },
+    {
+      "id": "value.59",
+      "producer": "v67_stmt.58",
+      "name": "v66_tmp"
+    },
+    {
+      "id": "value.63",
+      "producer": "v72_stmt.62",
+      "name": "v8_span"
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "v10_stmt.2",
+      "target": "v12_stmt.4",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v12_stmt.4",
+      "target": "v14_stmt.6",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.5",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v12_stmt.4",
+      "target": "v14_stmt.6",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v14_stmt.6",
+      "target": "v16_stmt.8",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.7",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v14_stmt.6",
+      "target": "v16_stmt.8",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v16_stmt.8",
+      "target": "v18_stmt.10",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.9",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v10_stmt.2",
+      "target": "v18_stmt.10",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.3",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v16_stmt.8",
+      "target": "v18_stmt.10",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v18_stmt.10",
+      "target": "v18_stmt.12",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v18_stmt.10",
+      "target": "v18_stmt.12",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.11",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v18_stmt.12",
+      "target": "v20_stmt.14",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.13",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v18_stmt.12",
+      "target": "v20_stmt.14",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v20_stmt.14",
+      "target": "v25_stmt.16",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v25_stmt.16",
+      "target": "v25_stmt.18",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v25_stmt.16",
+      "target": "v25_stmt.18",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.17",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v25_stmt.18",
+      "target": "v27_stmt.20",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.19",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v25_stmt.18",
+      "target": "v27_stmt.20",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v27_stmt.20",
+      "target": "v29_stmt.22",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.21",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v27_stmt.20",
+      "target": "v29_stmt.22",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v29_stmt.22",
+      "target": "v34_stmt.24",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v34_stmt.24",
+      "target": "v36_stmt.26",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.25",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v34_stmt.24",
+      "target": "v36_stmt.26",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v36_stmt.26",
+      "target": "v36_stmt.28",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v36_stmt.26",
+      "target": "v36_stmt.28",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.27",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v36_stmt.28",
+      "target": "v38_stmt.30",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.29",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v36_stmt.28",
+      "target": "v38_stmt.30",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v38_stmt.30",
+      "target": "v44_stmt.32",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v29_stmt.22",
+      "target": "v56_stmt.34",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.23",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v44_stmt.32",
+      "target": "v56_stmt.34",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v48_stmt.37",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "true",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v48_stmt.37",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v48_stmt.37",
+      "target": "v50_stmt.39",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.38",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v50_stmt.39",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "true",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v48_stmt.37",
+      "target": "v50_stmt.39",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v50_stmt.41",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "true",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v50_stmt.39",
+      "target": "v50_stmt.41",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v50_stmt.39",
+      "target": "v50_stmt.41",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.40",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v50_stmt.41",
+      "target": "v55_stmt.43",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.42",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v55_stmt.43",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "true",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v50_stmt.41",
+      "target": "v55_stmt.43",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v56_stmt.45",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v56_stmt.45",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.34",
+      "target": "v56_stmt.46",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v55_stmt.43",
+      "target": "v56_stmt.46",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.44",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": {
+        "task": "v56_stmt.34",
+        "port": "true"
+      },
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v44_stmt.32",
+      "target": "v56_stmt.46",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.33",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": {
+        "task": "v56_stmt.34",
+        "port": "false"
+      },
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.45",
+      "target": "v58_stmt.48",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v58_stmt.48",
+      "target": "v58_stmt.50",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v58_stmt.48",
+      "target": "v58_stmt.50",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.49",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v58_stmt.50",
+      "target": "v60_stmt.52",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.51",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v58_stmt.50",
+      "target": "v60_stmt.52",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v60_stmt.52",
+      "target": "v65_stmt.54",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v65_stmt.54",
+      "target": "v65_stmt.56",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v65_stmt.54",
+      "target": "v65_stmt.56",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.55",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v65_stmt.56",
+      "target": "v67_stmt.58",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.57",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v65_stmt.56",
+      "target": "v67_stmt.58",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v67_stmt.58",
+      "target": "v72_stmt.60",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.59",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v67_stmt.58",
+      "target": "v72_stmt.60",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.60",
+      "target": "v72_stmt.62",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "enter",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.62",
+      "target": "v71_stmt.64",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [
+          "v72_stmt.60"
+        ],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.63",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.60",
+      "target": "v71_stmt.64",
+      "kind": "control",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "enter",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.62",
+      "target": "v71_stmt.64",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [
+          "v72_stmt.60"
+        ],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.62",
+      "target": "v71_stmt.64",
+      "kind": "constraint",
+      "mapping": {
+        "source_loops": [
+          "v72_stmt.60"
+        ],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": true
+    },
+    {
+      "source": "v71_stmt.64",
+      "target": "v72_stmt.62",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [
+          "v72_stmt.60"
+        ],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": "v72_stmt.60",
+        "distance": 1
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v71_stmt.64",
+      "target": "v72_stmt.62",
+      "kind": "constraint",
+      "mapping": {
+        "source_loops": [
+          "v72_stmt.60"
+        ],
+        "target_loops": [
+          "v72_stmt.60"
+        ],
+        "carried_loop": "v72_stmt.60",
+        "distance": 1
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": true
+    },
+    {
+      "source": "v20_stmt.14",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.15",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v29_stmt.22",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.23",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v38_stmt.30",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.31",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v60_stmt.52",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.53",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v56_stmt.46",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.47",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v67_stmt.58",
+      "target": "v75_stmt.65",
+      "kind": "data",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": "value.59",
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    },
+    {
+      "source": "v72_stmt.60",
+      "target": "v75_stmt.65",
+      "kind": "constraint",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": true
+    },
+    {
+      "source": "v72_stmt.60",
+      "target": "v75_stmt.65",
+      "kind": "failure_order",
+      "mapping": {
+        "source_loops": [],
+        "target_loops": [],
+        "carried_loop": null,
+        "distance": 0
+      },
+      "port": "done",
+      "value": null,
+      "hazard": null,
+      "certainty": "proven",
+      "condition": null,
+      "seed": null,
+      "strict_only": false
+    }
+  ],
+  "requests": [
+    {
+      "id": "request.66",
+      "operation": "choice",
+      "scope": [],
+      "sites": [
+        "v18_stmt.12"
+      ],
+      "reusable": true
+    },
+    {
+      "id": "request.67",
+      "operation": "noul",
+      "scope": [],
+      "sites": [
+        "v25_stmt.18"
+      ],
+      "reusable": true
+    },
+    {
+      "id": "request.68",
+      "operation": "score",
+      "scope": [],
+      "sites": [
+        "v36_stmt.28"
+      ],
+      "reusable": true
+    },
+    {
+      "id": "request.69",
+      "operation": "generate",
+      "scope": [],
+      "sites": [
+        "v50_stmt.41"
+      ],
+      "reusable": true
+    },
+    {
+      "id": "request.70",
+      "operation": "generate_list",
+      "scope": [],
+      "sites": [
+        "v58_stmt.50"
+      ],
+      "reusable": true
+    },
+    {
+      "id": "request.71",
+      "operation": "extract",
+      "scope": [],
+      "sites": [
+        "v65_stmt.56"
+      ],
+      "reusable": true
+    }
+  ],
+  "format": "lev-execution-plan",
+  "version": 1
+}

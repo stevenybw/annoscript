@@ -1,7 +1,7 @@
-# Lev IR HTTP 协议 v1
+# AnnoScript IR HTTP 协议 v1
 
-本文保留 `lev.remote.RemoteLevClient` 的历史 NDJSON 协议，兼容客户端及离线测试替身。
-新入口 `LevClient.remote()` 使用[持久化任务协议](job_protocol.md)，通过短 HTTP 请求获取结果；
+本文保留 `annoscript.remote.AnnoRemoteClient` 的历史 NDJSON 协议，兼容客户端及离线测试替身。
+新入口 `AnnoClient.remote()` 使用[持久化任务协议](job_protocol.md)，通过短 HTTP 请求获取结果；
 当前任务 API 不实现本文的流式路由，也不会在两种协议间自动回退。
 本文的测试替身只绑定本机回环地址，仅用于 Python 3.10 → Python 3.12 的跨进程验收。
 
@@ -55,7 +55,7 @@ Python `precondition` 不会进入 IR。远程客户端先检查整批输入，�
 示意中的 `ir` 不是可执行样例，实际请求包含完整的现有 IR。`state` 必须为字符串、数组或对象，
 内部仅允许有限 JSON 值且对象键必须是字符串。每个 `index` 必须是唯一非负整数。
 
-摘要计算与 `lev.remote.ir_sha256()` 一致：对 IR 使用
+摘要计算与 `annoscript.remote.ir_sha256()` 一致：对 IR 使用
 `json.dumps(ir, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(",", ":"))`，
 再编码为 UTF-8 并计算 SHA-256。保留数组顺序，包括 IR 中表示字典条目的有序数组。
 摘要包含源码定位，因此不同 Python 版本的等价 IR 可能具有不同摘要。

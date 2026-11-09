@@ -1,4 +1,4 @@
-# Lev 持久化任务协议 v1
+# AnnoScript 持久化任务协议 v1
 
 Python 3.10–3.14 客户端提交 `lev-ir` version 1；Python 3.12–3.14 服务端校验、优化、lowering，
 再通过真实 Runtime 执行。所有 HTTP 交互是普通 JSON 短请求；不传 Python 源码、Python 检查函数、
@@ -9,7 +9,7 @@ Execution Plan 或模型凭据。保留单一源码包，服务器依赖单独�
 
 ## 两层客户端
 
-推荐普通调用方使用 `LevClient.remote(base_url, auth_token=None, *, mode="eager", optimize=True,
+推荐普通调用方使用 `AnnoClient.remote(base_url, auth_token=None, *, mode="eager", optimize=True,
 timeout=30.0, transport=None)`，然后调用与本地相同的 `submit(program, inputs, ordered=False)`。
 先执行整批输入快照、precondition 和编译，再建立会话和提交合法输入。全部非法或空批次零 HTTP；
 单条非法输入作为本地 `invalid_input` 合并，保留原始索引。检查器缺陷或编译失败直接中止提交。
@@ -23,14 +23,14 @@ timeout=30.0, transport=None)`，然后调用与本地相同的 `submit(program,
 需要显式持久任务管理时使用底层接口：
 
 ```python
-from lev.compiler import compile_program
-from lev.jobs import LevJobClient
-from lev._client_common import prepare_inputs
-from lev_examples.request import annotate
+from annoscript.compiler import compile_program
+from annoscript.jobs import AnnoJobClient
+from annoscript._client_common import prepare_inputs
+from annoscript_examples.request import annotate
 
 valid, local_errors = prepare_inputs(annotate, inputs)
 ir = compile_program(annotate)
-with LevJobClient(base_url, auth_token=service_token) as client:
+with AnnoJobClient(base_url, auth_token=service_token) as client:
     # 上层必须处理 local_errors；只有 valid 非空时创建任务。
     job = client.submit_ir(
         ir, [{"index": index, "state": state} for index, state in valid],
@@ -40,7 +40,7 @@ with LevJobClient(base_url, auth_token=service_token) as client:
     page = client.fetch_results(job, cursor=None, limit=100)
 
 # 新进程使用相同主体凭据，显式找回任务，不重新编译。
-with LevJobClient(base_url, auth_token=service_token) as client:
+with AnnoJobClient(base_url, auth_token=service_token) as client:
     job = client.lookup("caller-owned-stable-key")
     status = client.status(job)
     # 持久任务暂停后由调用方决定何时恢复。
@@ -51,7 +51,7 @@ with LevJobClient(base_url, auth_token=service_token) as client:
 
 `submit_ir` 接受 `Program` 或 IR 对象，以及带 `index/state` 的合法输入；可选 `release_id`、
 `application_revision` 和内部 `session_id`。底层方法返回 JSON 字典；任务参数可以传状态字典或 `job_id`。
-`LevJobClient.close()` 只关闭 HTTP 连接，持久任务继续存在。调用方管理幂等键和业务消费 checkpoint，
+`AnnoJobClient.close()` 只关闭 HTTP 连接，持久任务继续存在。调用方管理幂等键和业务消费 checkpoint，
 库不创建本地数据库，不提供消费 ACK。读取游标丢失后可重新读取已有结果，不重新推理。
 
 precondition 不在 IR 中。底层 `submit_ir` 不执行 Python 业务前置检查，直接使用它或 HTTP 的调用方
@@ -152,14 +152,14 @@ SQLite 使用 WAL、外键及 `synchronous=FULL`。数据库事务不等待模�
 `generation.profile` 省略时规范化为 `legacy`，可显式选择 `qwen_vllm`；`decision` 不接受该字段。
 profile 与 `disable_thinking` 都进入清单，紧凑 grammar 的源码由 `build_sha256` 绑定。
 相同源码下省略 profile 与显式 `legacy` 产生相同版本；切换 profile 或 thinking 开关产生新版本。
-worker 只使用任务绑定的清单，不受本地 `LEV_GENERATE_PROFILE` 或后续默认 release 变化影响。
+worker 只使用任务绑定的清单，不受本地 `ANNO_GENERATE_PROFILE` 或后续默认 release 变化影响。
 旧服务配置仍能加载；升级源码会改变执行版本，不会自动迁移旧任务或清空数据库。
 
 `decision.request_adapter` 和 `generation.request_adapter` 分别选择请求构造方案。
 保持原行为的默认方案为 `decision_native_v1` / `generation_chat_v1`；省略时也把对应默认值
 写入 manifest，同一源码下显式默认与省略产生相同 release。未知方案或跨阶段方案拒绝加载。
 适配器实现由 `build_sha256` 绑定，worker 只使用清单中的选择，不受本机
-`LEV_DECISION_REQUEST_ADAPTER` / `LEV_GENERATE_REQUEST_ADAPTER` 影响。
+`ANNO_DECISION_REQUEST_ADAPTER` / `ANNO_GENERATE_REQUEST_ADAPTER` 影响。
 模型、协议 profile、生成策略和原始 confidence 含义均不因该配置新增而改变。
 远程任务/IR 无需新增字段。离线请求预览见 [README](README.md#离线预览实际请求)。
 
@@ -167,7 +167,7 @@ Decision 可显式选择 `decision_configurable_v1`，并用 `decision.request_a
 配置 default/tasks。任务按 field_name 精确匹配；各方案完整声明 criteria/examples/state，
 格式见 [README](README.md#按任务选择-decision-表示)。规范化配置进入 manifest 和 release 摘要，
 配置/适配器源码改变均产生新 release；旧任务保留原绑定。
-worker 仅使用 manifest，不读取 `LEV_DECISION_REQUEST_ADAPTER_OPTIONS` 覆盖。
+worker 仅使用 manifest，不读取 `ANNO_DECISION_REQUEST_ADAPTER_OPTIONS` 覆盖。
 原样默认不新增 options 字段；生成侧不接受该字段。模型及校准配置不随表示方案自动改变。
 
 终态任务完整数据保留 7 天；维护时删除输入、IR、attempt 和结果正文，保留幂等墓碑。
@@ -180,7 +180,7 @@ worker 仅使用 manifest，不读取 `LEV_DECISION_REQUEST_ADAPTER_OPTIONS` 覆
 
 ```json
 {
-  "auth": {"local-user": "LEV_SERVICE_TOKEN"},
+  "auth": {"local-user": "ANNO_SERVICE_TOKEN"},
   "default_release": "main",
   "releases": {
     "main": {
@@ -203,14 +203,14 @@ worker 仅使用 manifest，不读取 `LEV_DECISION_REQUEST_ADAPTER_OPTIONS` 覆
 
 `auth` 将稳定主体名称映射到服务 token 的环境变量名；任务归属于主体，token 可轮换。
 API 与 worker 的配置加载要求这些服务 token 已设置。worker 另外读取
-`LEV_DECISION_AUTH_TOKEN`、`LEV_GENERATE_AUTH_TOKEN`，不自动读取 `.credential` 或执行 shell 文件。
+`ANNO_DECISION_AUTH_TOKEN`、`ANNO_GENERATE_AUTH_TOKEN`，不自动读取 `.credential` 或执行 shell 文件。
 
 ```sh
 python3.12 -m pip install -r requirements-server.txt
-python3.12 -m lev.server releases --config /absolute/path/service.json
+python3.12 -m annoscript.server releases --config /absolute/path/service.json
 # 两个独立终端，共享同一本地持久数据库和相同源码/配置
-python3.12 -m lev.server api --db /absolute/path/lev-jobs.sqlite --config /absolute/path/service.json
-python3.12 -m lev.server worker --db /absolute/path/lev-jobs.sqlite --config /absolute/path/service.json
+python3.12 -m annoscript.server api --db /absolute/path/lev-jobs.sqlite --config /absolute/path/service.json
+python3.12 -m annoscript.server worker --db /absolute/path/lev-jobs.sqlite --config /absolute/path/service.json
 ```
 
 API 默认 `127.0.0.1:8000`；可显式设置 `--host/--port`，worker 可设置 `--concurrency`。
@@ -247,11 +247,11 @@ Qwen/vLLM 的 release 配置示例：在上述 `main` 中将 `generation` 改为
 
 ```sh
 # Python 3.10–3.14；只需 requirements.txt，不导入执行后端
-LEV_RUN_LIVE_TESTS=0 python -m lev.client_tests -q
+ANNO_RUN_LIVE_TESTS=0 python -m annoscript.client_tests -q
 # Python 3.12–3.14；需要 requirements-server.txt
-LEV_RUN_LIVE_TESTS=0 python -m unittest discover -q
+ANNO_RUN_LIVE_TESTS=0 python -m unittest discover -q
 # 两个解释器缺一即失败，不静默跳过
-python3.12 -m lev.job_cross_version_tests \
+python3.12 -m annoscript.job_cross_version_tests \
   --client-python /path/to/python3.10 --server-python /path/to/python3.12
 git diff --check
 ```
@@ -262,7 +262,7 @@ git diff --check
 
 ## 外部管线绑定与版本查询
 
-`LevJobClient.release(release_id)` 对现有 `GET /v1/releases/{id}` 提供 Python 3.10+ 封装，
+`AnnoJobClient.release(release_id)` 对现有 `GET /v1/releases/{id}` 提供 Python 3.10+ 封装，
 返回 `protocol_version/release_id/manifest/available`，检查 ID 与 manifest 的规范化摘要。
 它不导入 Runtime、Backend、Plan、lowering 或 Server。返回 `available=false` 的历史清单
 可以解释旧结果，不表示可以用该版本继续执行。HTTP 协议没有新增字段。
@@ -275,15 +275,15 @@ git diff --check
 跨批缓存可以在客户端内存保存成功结果，同时在外部 checkpoint 保存原任务／结果索引
 及摘要。结果本身仍由 Server 的持久任务保存；缓存引用恢复不延长终态任务默认 7 天的
 保留期。保存绑定后遇到过期引用需显式处理，不能悄悄切换为新推理。既有业务输出 outbox
-与 Lev 执行 Journal 的职责不同，前者仍可保存准备写入业务 sinks 的最终快照。
+与 AnnoScript 执行 Journal 的职责不同，前者仍可保存准备写入业务 sinks 的最终快照。
 
 任务 `paused` 由操作方修复原因后，携带当前 `pause_generation` 和稳定的恢复操作幂等键
 显式 `resume()`；管线不会自动恢复预算。底层客户端 `close()` 只释放连接，不取消任务。
-此路径不改变 `LevClient.remote()` 的自动会话取消语义，也不表示业务系统已部署接入。
+此路径不改变 `AnnoClient.remote()` 的自动会话取消语义，也不表示业务系统已部署接入。
 
 ## 执行指标与显式数据库迁移
 
-新增 `GET /v1/jobs/{id}/metrics`，Python 接口 `LevJobClient.metrics(job)`。沿用认证、归属隔离、
+新增 `GET /v1/jobs/{id}/metrics`，Python 接口 `AnnoJobClient.metrics(job)`。沿用认证、归属隔离、
 重试及 7 天保留规则，过期返回 410。提交/状态/结果分页字段完全保留；Result/ResultError 和 IR 不变。
 该接口返回一致事务快照：
 
@@ -333,7 +333,7 @@ runtime trace/plan；原始正文使用 bytes，request ID 与计量一致，包
 先完成或显式处理在途任务，并停止所有 API/worker。确认独立备份路径尚不存在，再执行：
 
 ```sh
-python3.12 -m lev.server.migrate --db /absolute/path/lev-jobs.sqlite \
+python3.12 -m annoscript.server.migrate --db /absolute/path/lev-jobs.sqlite \
   --backup /absolute/path/lev-jobs-v1.backup.sqlite
 ```
 
