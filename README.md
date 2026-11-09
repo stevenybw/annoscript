@@ -4,11 +4,12 @@ AnnoScript compiles Python annotation programs into a serializable intermediate
 representation and an execution plan. Decision operations and generation
 operations can use separate model backends while sharing program state.
 
-The client supports Python 3.10+. Runtime and server execution require Python 3.12+.
+Quick Start and clients support Python 3.10+. Self-hosted servers and direct
+provider execution require Python 3.12+.
 
 ## Quick Start
 
-Use Python **3.12+**. Two commands install AnnoScript and run the packaged synthetic
+Use Python **3.10+**. Two commands install AnnoScript and run the packaged synthetic
 example with real model results, without deploying a server or obtaining model keys:
 
 ```bash
@@ -54,8 +55,9 @@ Connect with `AnnoClient.server("https://annotations.example.com", auth_token=..
 The server access token is distinct from model provider keys kept on the server.
 
 Existing local execution, durable-job clients and serialized protocols remain
-compatible. These clients still support Python 3.10+; the new local-runtime gateway
-client and server require Python 3.12+. Optional extras are `annoscript[server]`
+compatible. Quick Start and `AnnoClient.server()` also support Python 3.10+.
+Self-hosted servers and direct provider execution require Python 3.12+.
+Optional extras are `annoscript[server]`
 for hosting and `annoscript[tokenizer]` for pinned local tokenizer support.
 
 ## Offline tools and synthetic example

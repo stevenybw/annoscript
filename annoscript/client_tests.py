@@ -9,7 +9,7 @@ import unittest
 
 def load_tests(loader, tests, pattern):
     return loader.loadTestsFromNames([
-        "annoscript.test_client", "annoscript.test_compiler", "annoscript.test_ir", "annoscript.test_passes", "annoscript.test_examples",
+        "annoscript.test_client", "annoscript.test_gateway_client", "annoscript.test_compiler", "annoscript.test_ir", "annoscript.test_passes", "annoscript.test_examples",
         "annoscript.test_release_client", "annoscript.test_metrics", "annoscript.test_formatter", "annoscript.test_remote", "annoscript.test_jobs", ])
 
 

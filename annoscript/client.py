@@ -47,15 +47,12 @@ class AnnoClient:
     @classmethod
     def server(cls, base_url="https://annoscript.chukonu.ai", auth_token=None, *,
                mode="eager", timeout=45.0):
-        """Execute Python locally; send only model operations to a gateway (3.12+).
+        """Execute Python locally; send only model operations to a gateway (3.10+).
 
         No environment credentials are read. The official endpoint is anonymous.
         Construction is offline; one session starts at the first model operation.
         Limits and transport failures are reported without renewing or retrying.
         """
-        import sys
-        if sys.version_info < (3, 12):
-            raise RuntimeError("AnnoClient.server requires Python 3.12+; existing remote clients support 3.10+")
         from annoscript._gateway import GatewaySession, GatewayBackend
         from annoscript.runtime import AnnoRuntime
         session = GatewaySession(base_url, auth_token, timeout)

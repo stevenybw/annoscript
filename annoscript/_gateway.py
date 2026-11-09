@@ -30,10 +30,11 @@ class GatewaySession:
 
     async def post(self, route, body, bearer):
         try:
-            async with asyncio.timeout(self.timeout):
-                response = await self.http.post(self.url + route, content=encode_payload(body),
-                    headers={'Content-Type': 'application/json', **({'Authorization': 'Bearer ' + bearer} if bearer else {})})
-        except (TimeoutError, httpx.TimeoutException):
+            response = await asyncio.wait_for(
+                self.http.post(self.url + route, content=encode_payload(body),
+                    headers={'Content-Type': 'application/json', **({'Authorization': 'Bearer ' + bearer} if bearer else {})}),
+                timeout=self.timeout)
+        except (asyncio.TimeoutError, httpx.TimeoutException):
             self.fail('gateway_timeout')
         except httpx.RequestError:
             self.fail('gateway_unavailable')

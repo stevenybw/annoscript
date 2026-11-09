@@ -2,13 +2,15 @@
 
 This advanced setup runs the same model-operation gateway as the Playground.
 Python programs, preconditions, the compiler and runtime execute on the user's
-computer (Python 3.12+) or in their browser. The gateway accepts only `noul`,
+computer (Python 3.10+) or in their browser. The gateway accepts only `noul`,
 `choice`, `score`, `generate`, `generate_list` and `extract`, including bounded
 batches. It never accepts Python source or serialized IR for execution.
 
 For an immediate result without deployment, use the [Quick Start](../README.md#quick-start).
 Existing durable-job interfaces remain available separately; this gateway does
 not require a job worker or a release registry.
+
+The server runs Python 3.12+; clients can use Python 3.10+.
 
 ## 1. Configure the gateway
 
@@ -46,8 +48,8 @@ curl --fail http://127.0.0.1:8000/healthz
 docker compose logs --tail=50 gateway
 ```
 
-The image installs the checked-out `annoscript[server]` source (this release: 0.2.0).
-Use the `v0.2.0` tag for a reproducible source selection. It runs one process as a non-root
+The image installs the checked-out `annoscript[server]` source (this release: 0.2.1).
+Use the `v0.2.1` tag for a reproducible source selection. It runs one process as a non-root
 user with a read-only root filesystem. The named `quota` volume stores SQLite
 admission counts; inputs and model responses are not stored there. Preserve
 this volume and the HMAC secret across upgrades. Do not run `down -v` during
@@ -59,7 +61,7 @@ clients report that error and do not silently open replacements. Horizontal
 scaling requires shared session/concurrency coordination, which is not provided.
 
 For a non-container installation, export the same environment variables, install
-`pip install 'annoscript[server]==0.2.0'`, and run:
+`pip install 'annoscript[server]==0.2.1'`, and run:
 
 ```bash
 python -m annoscript.server gateway --host 127.0.0.1 --port 8000
