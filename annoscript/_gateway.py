@@ -10,6 +10,9 @@ from annoscript.backends.base import (BackendFatalError, BatchResult, InferenceO
 from annoscript.backends._generation_policy import effective_budget
 
 
+_SESSION_EXPIRED = object()
+
+
 class GatewaySession:
     def __init__(self, base_url, auth_token, timeout, *, transport=None):
         url = httpx.URL(base_url)
@@ -28,7 +31,7 @@ class GatewaySession:
         self.failure = code
         raise BackendFatalError('AnnoScript server: ' + code + '. No automatic retry; close this client.', code=code)
 
-    async def post(self, route, body, bearer):
+    async def post(self, route, body, bearer, *, renew_on_expiry=False):
         try:
             response = await asyncio.wait_for(
                 self.http.post(self.url + route, content=encode_payload(body),
@@ -47,33 +50,39 @@ class GatewaySession:
                      'daily_limit', 'ip_daily_limit', 'rate_limit', 'timeout', 'cancelled',
                      'invalid_input', 'invalid_operation', 'model_error'}
             code = value.get('code') if type(value) is dict else None
+            if renew_on_expiry and response.status_code == 401 and code == 'session_expired':
+                return _SESSION_EXPIRED
             self.fail(code if code in known else 'gateway_http_' + str(response.status_code))
         return value
 
-    async def ensure(self):
+    async def ensure(self, *, expired_token=None):
         async with self.lock:
             if self.closed:
                 self.fail('client_closed')
             if self.failure:
                 self.fail(self.failure)
-            if self.token is not None:
-                if time.monotonic() >= self.expires:
+            if self.token is not None and self.token != expired_token:
+                if self.expires is not None and time.monotonic() >= self.expires:
                     self.fail('session_expired')
-                return
+                return self.token
             if self.http is None:
                 self.http = httpx.AsyncClient(timeout=self.timeout,
                     transport=self.transport or httpx.AsyncHTTPTransport(retries=0),
                     follow_redirects=False, trust_env=False)
-            # A failed/ambiguous creation must never silently consume a second quota.
+            # A failed/ambiguous creation must never silently open another session.
             self.failure = 'session_creation_failed'
             value = await self.post('/api/playground/session', {}, self.auth)
             if (type(value) is not dict or type(value.get('token')) is not str or not value['token']
                 or type(value.get('timeout_seconds')) not in (int, float)
                 or not 0 < value['timeout_seconds'] <= 86400):
                 self.fail('invalid_gateway_response')
+            idle = value.get('idle_timeout_seconds')
+            if idle is not None and (type(idle) not in (int, float) or not 0 < idle <= 86400):
+                self.fail('invalid_gateway_response')
             self.token = value['token']
-            self.expires = time.monotonic() + value['timeout_seconds']
+            self.expires = time.monotonic() + value['timeout_seconds'] if idle is None else None
             self.failure = None
+            return self.token
 
     async def operation(self, body):
         # Fail locally before admitting a session when even the envelope is too large.
@@ -84,8 +93,13 @@ class GatewaySession:
             validate_operation(body)
         except (ValueError, TypeError, KeyError, RecursionError):
             self.fail('invalid_operation')
-        await self.ensure()
-        return await self.post('/api/playground/operation', body, self.token)
+        token = await self.ensure()
+        result = await self.post('/api/playground/operation', body, token, renew_on_expiry=self.expires is None)
+        if result is _SESSION_EXPIRED:
+            # The gateway rejects an expired token before dispatching any model work.
+            token = await self.ensure(expired_token=token)
+            result = await self.post('/api/playground/operation', body, token)
+        return result
 
     async def aclose(self):
         if self.closed:

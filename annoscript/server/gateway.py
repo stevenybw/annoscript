@@ -12,6 +12,9 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 
+IDLE_TIMEOUT = 600
+
+
 @dataclass
 class Session:
     expires: float
@@ -23,25 +26,38 @@ class Session:
 
 
 class Sessions:
-    def __init__(self, app, limit, duration, backend_factory=None):
-        self.app, self.limit, self.duration = app, limit, duration
+    def __init__(self, *, unlimited=False):
         self.items = {}
-        self.backend_factory = backend_factory
+        self.unlimited = unlimited
 
     def close(self, token):
         item = self.items.pop(token, None)
         if item:
-            for task in list(item.tasks):
+            for task in item.tasks:
                 task.cancel()
+            item.tasks.clear()
 
     def expire(self):
         for token, item in list(self.items.items()):
-            if item.expires <= time.monotonic():
+            if self.expired(item):
                 self.close(token)
 
+    def expired(self, item):
+        return item.expires <= time.monotonic() and (not self.unlimited or not item.tasks)
 
-def install_gateway(app, allowed, limit, duration, backend_factory=None, *, access_token=None):
-    sessions = Sessions(app, limit, duration, backend_factory)
+    async def reap_idle(self):
+        while True:
+            await asyncio.sleep(30)
+            self.expire()
+
+
+async def wait_for_disconnect(request):
+    while (await request.receive())["type"] != "http.disconnect":
+        pass
+
+
+def install_gateway(app, allowed, limit, duration, backend_factory=None, *, access_token=None, unlimited=False):
+    sessions = Sessions(unlimited=unlimited)
     app.state.editor_sessions = sessions
 
     def response(code, status=400):
@@ -75,14 +91,20 @@ def install_gateway(app, allowed, limit, duration, backend_factory=None, *, acce
                 return response("invalid_input", 422)
         except (ValueError, RecursionError):
             return response("invalid_input", 422)
-        sessions.expire()
-        denial = app.state.quota.admit(request.client.host if request.client else "unknown")
-        if denial:
-            return response(denial[0], 429)
+        if not unlimited:
+            sessions.expire()
+            denial = app.state.quota.admit(request.client.host if request.client else "unknown")
+            if denial:
+                return response(denial[0], 429)
         identity = secrets.token_urlsafe(32)
-        sessions.items[identity] = Session(time.monotonic() + duration)
-        return JSONResponse({"token": identity, "timeout_seconds": duration,
-                             "max_requests": 12, "max_output_tokens": 8192}, headers={"Cache-Control": "no-store"})
+        sessions.items[identity] = Session(time.monotonic() + (IDLE_TIMEOUT if unlimited else duration))
+        if unlimited:
+            # Older SDKs require a positive timeout_seconds of at most one day.
+            info = {"timeout_seconds": 86400, "idle_timeout_seconds": IDLE_TIMEOUT,
+                    "max_requests": None, "max_output_tokens": None}
+        else:
+            info = {"timeout_seconds": duration, "max_requests": 12, "max_output_tokens": 8192}
+        return JSONResponse({"token": identity, **info}, headers={"Cache-Control": "no-store"})
 
     @app.post("/api/playground/session/close")
     async def close(request: Request):
@@ -95,10 +117,11 @@ def install_gateway(app, allowed, limit, duration, backend_factory=None, *, acce
 
     @app.post("/api/playground/operation")
     async def operation(request: Request):
-        sessions.expire()
+        if not unlimited:
+            sessions.expire()
         identity = token(request)
         item = sessions.items.get(identity)
-        if item is None:
+        if item is None or sessions.expired(item):
             return response("session_expired", 401)
         try:
             data = await read(request)
@@ -107,26 +130,28 @@ def install_gateway(app, allowed, limit, duration, backend_factory=None, *, acce
         except (ValueError, TypeError, KeyError, RecursionError):
             return response("invalid_operation", 422)
         # Reading the body can yield to a concurrent close or expiry.
-        if sessions.items.get(identity) is not item or item.expires <= time.monotonic():
+        if sessions.items.get(identity) is not item or sessions.expired(item):
             return response("session_expired", 401)
         kind = 'decision' if decision else 'generation'
-        if kind in item.inflight:
-            return response("operation_busy", 429)
-        if item.requests >= 12 or (not decision and budget > item.output_budget):
-            return response("run_budget", 429)
-        if not item.slot:
-            if app.state.active >= limit:
-                return response("busy", 429)
-            item.slot = True
-            app.state.active += 1
-        item.requests += 1
-        if not decision:
-            item.output_budget -= budget
+        if not unlimited:
+            if kind in item.inflight:
+                return response("operation_busy", 429)
+            if item.requests >= 12 or (not decision and budget > item.output_budget):
+                return response("run_budget", 429)
+            if not item.slot:
+                if app.state.active >= limit:
+                    return response("busy", 429)
+                item.slot = True
+                app.state.active += 1
+            item.requests += 1
+            if not decision:
+                item.output_budget -= budget
+            item.inflight.add(kind)
 
         async def infer():
             from annoscript.backends.config import backends_from_env
             from annoscript._data import thaw
-            backends = (sessions.backend_factory or backends_from_env)(timeout=45, disable_thinking=True)
+            backends = (backend_factory or backends_from_env)(timeout=45, disable_thinking=True)
             backend = backends[0 if decision else 1]
             try:
                 if not decision and len(calls) == 1:
@@ -148,10 +173,15 @@ def install_gateway(app, allowed, limit, duration, backend_factory=None, *, acce
 
         task = asyncio.create_task(infer())
         item.tasks.add(task)
-        item.inflight.add(kind)
+        disconnect = asyncio.create_task(wait_for_disconnect(request))
         try:
-            result = await asyncio.wait_for(task, max(.01, min(45, item.expires - time.monotonic())))
-            return JSONResponse(result, headers={"Cache-Control": "no-store"})
+            timeout = 45 if unlimited else max(.01, min(45, item.expires - time.monotonic()))
+            done, _ = await asyncio.wait({task, disconnect}, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            if disconnect in done:
+                return response("cancelled", 409)
+            if task not in done:
+                return response("timeout", 504)
+            return JSONResponse(task.result(), headers={"Cache-Control": "no-store"})
         except asyncio.CancelledError:
             return response("cancelled", 409)
         except TimeoutError:
@@ -159,11 +189,24 @@ def install_gateway(app, allowed, limit, duration, backend_factory=None, *, acce
         except Exception:
             return response("model_error", 502)
         finally:
-            item.tasks.discard(task)
-            item.inflight.discard(kind)
-            if not item.inflight and item.slot:
-                item.slot = False
-                app.state.active -= 1
+            if not task.done() and task in item.tasks:
+                # Claim cancellation before awaiting cleanup so close cannot interrupt it again.
+                item.tasks.remove(task)
+                if unlimited:
+                    item.expires = time.monotonic() + IDLE_TIMEOUT
+                task.cancel()
+            disconnect.cancel()
+            try:
+                await asyncio.gather(task, disconnect, return_exceptions=True)
+            finally:
+                item.tasks.discard(task)
+                if unlimited:
+                    item.expires = time.monotonic() + IDLE_TIMEOUT
+                else:
+                    item.inflight.discard(kind)
+                    if not item.inflight and item.slot:
+                        item.slot = False
+                        app.state.active -= 1
 
     return sessions
 

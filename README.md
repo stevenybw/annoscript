@@ -26,10 +26,9 @@ python -m pip install --upgrade --index-url https://pypi.org/simple "annoscript>
 
 The example runs Python locally and sends model-operation inputs to the official
 anonymous gateway at **https://annoscript.chukonu.ai**, the same gateway used by the
-[Playground](https://annoscript.chukonu.ai/#playground). Shared limits apply: 1,000
-sessions/day globally, 50/IP/day, 5/IP/minute, four active sessions; each session
-lasts 120 seconds with 12 requests and an 8,192 output-token budget. Limits can
-make the demo unavailable. Do not send confidential inputs to the hosted demo.
+[Playground](https://annoscript.chukonu.ai/en/#playground). During public testing,
+the hosted gateway uses a ten-minute idle session lifetime and per-request model
+limits. Do not send confidential inputs to the hosted demo.
 
 The same packaged program is available through the Python API:
 

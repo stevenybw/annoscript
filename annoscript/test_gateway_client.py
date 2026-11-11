@@ -76,6 +76,58 @@ class GatewayClientTests(unittest.TestCase):
 
 
 class GatewayTimeoutTests(unittest.IsolatedAsyncioTestCase):
+    async def test_idle_expiry_renews_once_for_concurrent_operations(self):
+        stale = asyncio.Event()
+        opened, rejected = [], []
+
+        async def handle(request):
+            if request.url.path.endswith('/session'):
+                opened.append(str(len(opened)))
+                return httpx.Response(200, json={'token': opened[-1], 'timeout_seconds': 86400,
+                                                'idle_timeout_seconds': 600})
+            if request.url.path.endswith('/close'):
+                return httpx.Response(200, json={'status': 'closed'})
+            if request.headers['authorization'] == 'Bearer 0':
+                rejected.append(request)
+                if len(rejected) == 2:
+                    stale.set()
+                await stale.wait()
+                return httpx.Response(401, json={'code': 'session_expired'})
+            return httpx.Response(200, json={'responses': {}})
+
+        session = GatewaySession('https://offline.invalid', None, 1, transport=httpx.MockTransport(handle))
+        body = {'state': SAMPLE, 'calls': [{'id': 'q', 'operation': 'generate', 'arguments': {
+            'instructions': 'Write.', 'max_length': 30}}]}
+        try:
+            results = await asyncio.gather(session.operation(body), session.operation(body))
+            self.assertEqual(results, [{'responses': {}}, {'responses': {}}])
+            self.assertEqual(opened, ['0', '1'])
+            self.assertIsNone(session.expires)
+        finally:
+            await session.aclose()
+
+    async def test_idle_renewal_stops_after_second_expiry(self):
+        opened = []
+
+        def handle(request):
+            if request.url.path.endswith('/session'):
+                opened.append(str(len(opened)))
+                return httpx.Response(200, json={'token': opened[-1], 'timeout_seconds': 86400,
+                                                'idle_timeout_seconds': 600})
+            if request.url.path.endswith('/close'):
+                return httpx.Response(200, json={'status': 'closed'})
+            return httpx.Response(401, json={'code': 'session_expired'})
+
+        session = GatewaySession('https://offline.invalid', None, 1, transport=httpx.MockTransport(handle))
+        body = {'state': SAMPLE, 'calls': [{'id': 'q', 'operation': 'generate', 'arguments': {
+            'instructions': 'Write.', 'max_length': 30}}]}
+        try:
+            with self.assertRaisesRegex(BackendFatalError, 'session_expired'):
+                await session.operation(body)
+            self.assertEqual(opened, ['0', '1'])
+        finally:
+            await session.aclose()
+
     async def test_timeout_cancels_request_without_retry_or_reopening(self):
         requests, cancelled = [], []
         async def slow(request):
